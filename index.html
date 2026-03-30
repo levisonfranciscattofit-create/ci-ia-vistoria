@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo | V9.3 POC</title>
+  <title>Cielo | POC V9.4</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#020617] text-white font-sans flex items-center justify-center min-h-screen m-0 p-4">
@@ -17,7 +17,7 @@
     <button id="btnStop" onclick="finalizarCiclo()" class="hidden w-full bg-red-600 text-white font-black py-6 rounded-3xl text-xl animate-pulse uppercase">🛑 Finalizar Agora</button>
 
     <div id="statusArea" class="hidden mt-10 pt-8 border-t border-slate-800 text-left">
-      <p id="fala" class="text-yellow-400 italic font-bold mb-8 text-center text-lg leading-snug">Ouvindo...</p>
+      <p id="fala" class="text-yellow-400 italic font-bold mb-8 text-center text-lg leading-snug">Aguardando voz...</p>
       <div id="lista" class="space-y-3"></div>
       <h1 id="contador" class="text-8xl font-black mt-8 text-white text-center"></h1>
     </div>
@@ -38,28 +38,28 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 const dicionario = {
-    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado", "estourado", "partido", "vidro", "quebrada"],
-    "RISCOS NA TELA": ["risco", "riscada", "arranhado", "arranhão", "ralado", "marcado", "riscos", "arranhada"],
-    "FUGA DE LUZ": ["luz", "vazamento", "brilho lateral", "fuga", "borda branca", "mancha clara", "vazando"],
-    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "afundado", "solto", "não aperta", "botões", "teclas"],
-    "FALTA DE RELEVO": ["liso", "relevo", "apagado", "serigrafia", "carcaça lisa", "sem marcação", "lisa"]
+    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado", "estourado", "partido", "vidro"],
+    "RISCOS NA TELA": ["risco", "riscada", "arranhado", "arranhão", "ralado", "marcado"],
+    "FUGA DE LUZ": ["luz", "vazamento", "brilho", "fuga", "borda"],
+    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "afundado", "solto", "botões", "teclas"],
+    "FALTA DE RELEVO": ["liso", "relevo", "apagado", "serigrafia", "lisa"]
 };
 
-const comandosParar = ["finalizar", "concluir", "feito", "pronto", "terminar", "finaliza", "concluído", "encerrar", "parar"];
+const comandosParar = ["finalizar", "concluir", "feito", "pronto", "terminar", "finaliza", "encerrar", "parar", "ok", "confirmar"];
 
 let recognition;
-let ouvindoAtivo = false;
+let finalizado = false;
 
 window.iniciar = () => {
     const serial = document.getElementById("serial").value.trim();
     if(!serial) return alert("Digite o Serial!");
 
-    ouvindoAtivo = true;
+    finalizado = false;
     document.getElementById("btnMain").classList.add("hidden");
     document.getElementById("btnStop").classList.remove("hidden");
     document.getElementById("statusArea").classList.remove("hidden");
     document.getElementById("lista").innerHTML = "";
-    document.getElementById("fala").innerText = "Ouvindo...";
+    document.getElementById("fala").innerText = "...";
 
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new Speech();
@@ -67,65 +67,65 @@ window.iniciar = () => {
     recognition.continuous = true;
     recognition.interimResults = true;
 
-    recognition.onresult = (e) => {
-        if (!ouvindoAtivo) return;
+    recognition.onresult = (event) => {
+        if (finalizado) return;
 
-        let textoAtual = "";
-        for (let i = 0; i < e.results.length; i++) {
-            textoAtual += e.results[i][0].transcript;
+        let transcricaoParcial = "";
+        for (let i = 0; i < event.results.length; i++) {
+            transcricaoParcial += event.results[i][0].transcript;
         }
         
-        const total = textoAtual.toLowerCase();
-        document.getElementById("fala").innerText = total;
+        const textoNormalizado = transcricaoParcial.toLowerCase();
+        document.getElementById("fala").innerText = textoNormalizado;
 
-        // CHECAGEM AGRESSIVA DE PARADA
-        const encontrouComando = comandosParar.some(cmd => total.includes(cmd));
-        if (encontrouComando) {
-            window.finalizarCiclo();
+        // BUSCA IMEDIATA PELO COMANDO DE PARADA
+        for (let cmd of comandosParar) {
+            if (textoNormalizado.includes(cmd)) {
+                finalizado = true; // Trava para não rodar de novo
+                window.finalizarCiclo(textoNormalizado);
+                break;
+            }
         }
     };
 
-    recognition.onerror = () => { window.finalizarCiclo(); };
     recognition.start();
 };
 
-window.finalizarCiclo = () => {
-    if (!ouvindoAtivo) return; // Evita rodar duas vezes
-    ouvindoAtivo = false;
-
-    if(recognition) { 
-        try { recognition.stop(); } catch(e){} 
+window.finalizarCiclo = (textoParaProcessar) => {
+    if (recognition) {
+        try { recognition.stop(); } catch(e){}
     }
     
     document.getElementById("btnStop").classList.add("hidden");
-    const falaTecnico = document.getElementById("fala").innerText.toLowerCase();
+    const falaOriginal = textoParaProcessar || document.getElementById("fala").innerText.toLowerCase();
     const errosEncontrados = [];
 
-    // Busca no dicionário
-    for (let erroOficial in dicionario) {
-        if (dicionario[erroOficial].some(p => falaTecnico.includes(p))) {
-            errosEncontrados.push(erroOficial);
+    // Mapeamento do dicionário
+    for (let erro in dicionario) {
+        if (dicionario[erro].some(palavra => falaOriginal.includes(palavra))) {
+            errosEncontrados.push(erro);
         }
     }
 
+    // Mostrar na tela
     const ui = document.getElementById("lista");
     if (errosEncontrados.length === 0) {
-        ui.innerHTML = "<p class='text-green-400 font-black text-center text-xl uppercase'>✓ EQUIPAMENTO OK</p>";
+        ui.innerHTML = "<p class='text-green-400 font-black text-center text-xl uppercase'>✓ OK</p>";
     } else {
         errosEncontrados.forEach(e => {
             ui.innerHTML += `<div class="bg-red-500/10 border-l-4 border-red-500 p-4 text-xs font-black text-left uppercase">❌ ${e}</div>`;
         });
     }
 
-    // Salva no Firebase
+    // Salvar no Firebase
     push(ref(db, "inspecao"), {
         serial: document.getElementById("serial").value.toUpperCase(),
         defeitos: errosEncontrados,
-        transcricao: falaTecnico,
+        transcricao: falaOriginal,
         data: new Date().toLocaleString()
     });
 
-    let c = 5;
+    let c = 4;
     const t = setInterval(() => {
         document.getElementById("contador").innerText = c--;
         if(c < 0) { clearInterval(t); location.reload(); }
