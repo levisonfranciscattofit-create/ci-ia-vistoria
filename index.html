@@ -2,19 +2,19 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Cielo Vistoria | V18 Final</title>
+  <title>Cielo Vistoria | POC V19</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root { --cielo: #00aeef; --danger: #ff4b5c; --bg: #010a12; }
     body { background: radial-gradient(circle, #003d66 0%, var(--bg) 100%); color: white; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: 40px; width: 450px; padding: 40px; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
-    .logo { font-family: 'Orbitron'; color: var(--cielo); font-size: 22px; margin-bottom: 25px; text-transform: uppercase; }
+    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: 40px; width: 450px; padding: 40px; text-align: center; }
+    .logo { font-family: 'Orbitron'; color: var(--cielo); font-size: 22px; margin-bottom: 20px; letter-spacing: 2px; }
     input { width: 100%; background: #000; border: 2px solid var(--cielo); border-radius: 15px; padding: 18px; color: #fff; text-align: center; font-size: 28px; font-family: 'Orbitron'; margin-bottom: 20px; outline: none; }
-    #fala-preview { min-height: 120px; font-size: 20px; color: #facc15; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.2); text-align: left; word-wrap: break-word; }
-    .mic-pulse { width: 50px; height: 50px; background: var(--danger); border-radius: 50%; margin: 0 auto 15px; display: none; animation: pulse 1s infinite; align-items: center; justify-content: center; }
-    .erro-box { background: rgba(255, 75, 92, 0.2); border-left: 5px solid var(--danger); padding: 12px; margin-top: 10px; text-align: left; font-size: 18px; font-weight: bold; }
+    #fala-preview { min-height: 100px; font-size: 20px; color: #facc15; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.3); text-align: left; }
+    .mic-icon { width: 50px; height: 50px; background: var(--danger); border-radius: 50%; margin: 0 auto 15px; display: none; animation: pulse 1s infinite; align-items: center; justify-content: center; }
+    .erro-box { background: rgba(255, 75, 92, 0.2); border-left: 5px solid var(--danger); padding: 12px; margin-top: 10px; text-align: left; font-size: 18px; font-weight: bold; border-radius: 8px; }
     #timer { font-size: 60px; font-weight: 900; color: var(--cielo); margin-top: 10px; }
     @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 75, 92, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 75, 92, 0); } 100% { transform: scale(1); } }
   </style>
@@ -22,16 +22,14 @@
 <body>
 
 <div class="glass">
-  <div class="logo">Cielo Vistoria <span>V18</span></div>
+  <div class="logo">CIELO <span>VISTORIA POC</span></div>
   <input id="serialInput" type="text" placeholder="BIPE O SERIAL" autofocus autocomplete="off">
   
-  <div id="micIcon" class="mic-pulse">🎤</div>
-  <div id="fala-preview">Aguardando bipe...</div>
-  
+  <div id="micIcon" class="mic-icon">🎤</div>
+  <div id="fala-preview">...</div>
   <div id="listaErros"></div>
   
-  <button id="btnManual" style="width:100%; padding:18px; border-radius:15px; background:var(--cielo); color:white; font-weight:bold; display:none; border:none; cursor:pointer; font-family:'Rajdhani'; font-size:18px;" onclick="forçarFinalizar()">CONFIRMAR AGORA</button>
-  
+  <button id="btnManual" style="width:100%; padding:18px; border-radius:15px; background:var(--cielo); color:white; font-weight:bold; display:none; border:none; cursor:pointer; font-size:18px;" onclick="forçarFinalizar()">CONCLUIR VISTORIA</button>
   <div id="timer"></div>
 </div>
 
@@ -46,18 +44,18 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// --- DICIONÁRIO ENXUTO (FOCO NA POC) ---
 const dicionario = {
-    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrad", "trinc", "rach", "vidro"],
-    "RISCOS NA TELA": ["risc", "arranh", "marc", "ralad"],
-    "TECLAS DANIFICADAS": ["tecla", "botão", "botao", "teclado", "travad", "afund"],
-    "FALTA DE RELEVO": ["liso", "relevo", "apagad", "lisa"]
+    "TELA QUEBRADA": ["tela", "quebrad", "trinc", "visor"],
+    "TECLADO RUIM": ["tecla", "botão", "teclad"],
+    "FALTA DE RELEVO": ["relevo", "liso", "apagad"]
 };
 
 let recognition;
-let isRecording = false;
-let silenceTimer;
+let gravando = false;
+let silêncioTimer;
 let scannerTimer;
-let totalFinalText = ""; // MEMÓRIA EXTERNA QUE NUNCA APAGA
+let textoAcumulado = ""; // MEMÓRIA QUE NÃO APAGA
 
 document.getElementById('serialInput').addEventListener('input', function() {
     clearTimeout(scannerTimer);
@@ -65,13 +63,13 @@ document.getElementById('serialInput').addEventListener('input', function() {
 });
 
 function startMic() {
-    if(isRecording) return;
-    isRecording = true;
-    totalFinalText = ""; // Reseta para novo atendimento
+    if(gravando) return;
+    gravando = true;
+    textoAcumulado = ""; 
     
     document.getElementById('micIcon').style.display = "flex";
     document.getElementById('btnManual').style.display = "block";
-    document.getElementById('fala-preview').innerText = "";
+    document.getElementById('fala-preview').innerText = "Ouvindo...";
 
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new Speech();
@@ -80,26 +78,21 @@ function startMic() {
     recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-        let interimText = "";
-        let finalDaRodada = "";
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-                totalFinalText += event.results[i][0].transcript + " ";
-            } else {
-                interimText += event.results[i][0].transcript;
-            }
+        let rodadaTexto = "";
+        for (let i = 0; i < event.results.length; i++) {
+            rodadaTexto += event.results[i][0].transcript + " ";
         }
+        
+        // O PULO DO GATO: Sempre somamos, nunca limpamos.
+        textoAcumulado = rodadaTexto.toLowerCase();
+        document.getElementById('fala-preview').innerText = textoAcumulado;
 
-        // Exibe a SOMA do que já foi fechado com o que está sendo falado agora
-        const liveDisplay = (totalFinalText + interimText).toLowerCase();
-        document.getElementById('fala-preview').innerText = liveDisplay;
-
-        // Gerencia encerramento
-        clearTimeout(silenceTimer);
-        silenceTimer = setTimeout(() => { if(isRecording) forçarFinalizar(); }, 8000);
-
-        if (liveDisplay.includes("ok") || liveDisplay.includes("pronto") || liveDisplay.includes("finalizar")) {
+        // Timer de 6s para pausas
+        clearTimeout(silêncioTimer);
+        silêncioTimer = setTimeout(() => { if(gravando) forçarFinalizar(); }, 6000);
+        
+        // Se falar "Pronto" ou "Finalizar"
+        if(textoAcumulado.includes("pronto") || textoAcumulado.includes("finalizar") || textoAcumulado.includes("ok")) {
             forçarFinalizar();
         }
     };
@@ -108,24 +101,22 @@ function startMic() {
 }
 
 function forçarFinalizar() {
-    if(!isRecording) return;
-    isRecording = false;
+    if(!gravando) return;
+    gravando = false;
     
-    // Análise baseada no que está na tela (que é a soma de tudo)
-    const textToAnalyze = document.getElementById('fala-preview').innerText.toLowerCase();
-    
+    const textoParaAnalise = document.getElementById('fala-preview').innerText.toLowerCase();
     if(recognition) recognition.stop();
-    clearTimeout(silenceTimer);
+    clearTimeout(silêncioTimer);
 
     document.getElementById('micIcon').style.display = "none";
     document.getElementById('btnManual').style.display = "none";
     
     const encontrados = [];
-    for (let erro in dicionario) {
-        if (dicionario[erro].some(p => textToAnalyze.includes(p))) {
+    Object.keys(dicionario).forEach(erro => {
+        if (dicionario[erro].some(p => textoParaAnalise.includes(p))) {
             encontrados.push(erro);
         }
-    }
+    });
 
     const list = document.getElementById('listaErros');
     if(encontrados.length === 0) {
@@ -136,11 +127,11 @@ function forçarFinalizar() {
         });
     }
 
-    // FIREBASE
+    // SALVAR
     db.ref("inspecao").push({
         serial: document.getElementById('serialInput').value.toUpperCase(),
         defeitos: encontrados,
-        transcricao: textToAnalyze,
+        transcricao: textoParaAnalise,
         data: new Date().toLocaleString()
     });
 
