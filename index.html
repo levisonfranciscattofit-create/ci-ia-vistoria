@@ -2,141 +2,118 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo Vistoria | V10.0 Pro</title>
+  <title>Cielo Vistoria | V10.2 Pro</title>
   <style>
     :root { --primary: #0ea5e9; --danger: #ef4444; --bg: #020617; --card: #0f172a; }
-    body { background: var(--bg); color: white; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
-    .card { background: var(--card); border: 2px solid #1e293b; border-radius: 24px; width: 450px; padding: 40px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); transition: all 0.3s; }
-    .card.active { border-color: var(--primary); box-shadow: 0 0 20px rgba(14, 165, 233, 0.2); }
-    .logo { font-size: 22px; font-weight: 800; margin-bottom: 30px; letter-spacing: -1px; }
+    body { background: var(--bg); color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .card { background: var(--card); border: 2px solid #1e293b; border-radius: 24px; width: 450px; padding: 40px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+    .logo { font-size: 22px; font-weight: 800; margin-bottom: 30px; }
     .logo span { color: var(--primary); }
-    input { width: 100%; background: #000; border: 2px solid #334155; border-radius: 16px; padding: 20px; color: var(--primary); text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 25px; box-sizing: border-box; outline: none; transition: 0.3s; }
-    input:focus { border-color: var(--primary); background: #020617; }
-    .status-badge { width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; text-transform: uppercase; font-size: 14px; letter-spacing: 1px; margin-bottom: 20px; transition: 0.3s; }
+    input { width: 100%; background: #000; border: 2px solid #334155; border-radius: 16px; padding: 20px; color: var(--primary); text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 25px; box-sizing: border-box; outline: none; }
+    .status-badge { width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; text-transform: uppercase; font-size: 14px; margin-bottom: 20px; }
     .waiting { background: #1e293b; color: #64748b; }
     .listening { background: var(--danger); color: white; animation: pulse 1.5s infinite; }
-    #fala-preview { color: #facc15; font-style: italic; font-size: 18px; min-height: 60px; margin-bottom: 20px; line-height: 1.4; }
-    .erro-card { background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger); padding: 16px; margin-top: 10px; text-align: left; font-weight: bold; animation: slideIn 0.3s ease-out; }
-    .ok-card { color: #22c55e; font-size: 24px; font-weight: bold; margin-top: 20px; }
-    #countdown { font-size: 80px; font-weight: 900; margin-top: 20px; opacity: 0.5; }
-    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-    @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+    #fala-preview { color: #facc15; font-style: italic; font-size: 18px; min-height: 60px; margin-bottom: 20px; }
+    .erro-card { background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger); padding: 12px; margin-top: 8px; text-align: left; font-size: 14px; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
   </style>
 </head>
 <body>
 
-<div class="card" id="mainCard">
-  <div class="logo">CIELO <span>VISTORIA V10</span></div>
-  
-  <input id="serialInput" type="text" placeholder="BIPE O SERIAL" autofocus autocomplete="off">
-  
+<div class="card">
+  <div class="logo">CIELO <span>VISTORIA</span></div>
+  <input id="serialInput" type="text" placeholder="BIPE O SERIAL" autofocus>
   <div id="badge" class="status-badge waiting">Aguardando Scanner...</div>
-
   <div id="liveArea" style="display:none">
-    <div id="fala-preview">"Aguardando sua voz..."</div>
+    <div id="fala-preview">Iniciando microfone...</div>
     <div id="resultsList"></div>
-    <div id="countdown"></div>
+    <h1 id="countdown"></h1>
   </div>
 </div>
 
 <script>
-// --- DICIONÁRIO DE SINÔNIMOS V10 ---
 const dicionario = {
-    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado", "vidro", "quebrada", "estourado"],
-    "RISCOS NA TELA": ["risco", "riscada", "arranhado", "arranhão", "ralado", "marcado", "riscos"],
-    "FUGA DE LUZ": ["luz", "vazamento", "brilho", "fuga", "borda", "mancha"],
-    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "afundado", "botões", "teclas", "solto"],
-    "FALTA DE RELEVO": ["liso", "relevo", "apagado", "serigrafia", "lisa", "desgastado"]
+    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado", "vidro"],
+    "RISCOS NA TELA": ["risco", "riscada", "arranhado", "arranhão", "marcado"],
+    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "afundado", "botões"],
+    "FALTA DE RELEVO": ["liso", "relevo", "apagado", "lisa"]
 };
-
-const comandosParar = ["finalizar", "pronto", "concluir", "feito", "ok", "parar", "confirmar", "terminar"];
+const comandosParar = ["finalizar", "pronto", "concluir", "feito", "ok", "parar"];
 
 let recognition;
-let isListening = false;
+let gravando = false;
 
-// Foco automático no input ao carregar
-window.onload = () => document.getElementById('serialInput').focus();
+// Garante o foco no input
+document.getElementById('serialInput').focus();
 
-// Detecta o BIPE do Scanner (Enter)
-document.getElementById('serialInput').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && e.target.value.trim() !== "") {
-        startVistoria();
+document.getElementById('serialInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault(); // CRÍTICO: Impede o navegador de resetar a página
+        if(this.value.trim() !== "") startVistoria();
     }
 });
 
 function startVistoria() {
-    if(isListening) return;
-    isListening = true;
+    if(gravando) return;
+    gravando = true;
 
-    // UI Updates
-    document.getElementById('mainCard').classList.add('active');
-    const badge = document.getElementById('badge');
-    badge.innerText = "🛑 OUVINDO AGORA...";
-    badge.className = "status-badge listening";
+    document.getElementById('badge').innerText = "🛑 OUVINDO...";
+    document.getElementById('badge').className = "status-badge listening";
     document.getElementById('liveArea').style.display = "block";
-    document.getElementById('serialInput').readOnly = true;
 
-    // Speech Setup
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!Speech) return alert("Navegador não suporta voz!");
+
     recognition = new Speech();
     recognition.lang = "pt-BR";
     recognition.continuous = true;
     recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-        let currentTranscript = "";
+        let texto = "";
         for (let i = 0; i < event.results.length; i++) {
-            currentTranscript += event.results[i][0].transcript;
+            texto += event.results[i][0].transcript;
         }
-        
-        const cleanText = currentTranscript.toLowerCase();
-        document.getElementById('fala-preview').innerText = `"${cleanText}"`;
+        texto = texto.toLowerCase();
+        document.getElementById('fala-preview').innerText = `"${texto}"`;
 
-        // Verifica Gatilhos de Parada
-        if (comandosParar.some(cmd => cleanText.includes(cmd))) {
-            finishVistoria(cleanText);
+        if (comandosParar.some(cmd => texto.includes(cmd))) {
+            finalizar(texto);
         }
+    };
+
+    recognition.onerror = (event) => {
+        document.getElementById('fala-preview').innerText = "Erro no Mic: " + event.error;
+        if(event.error === 'not-allowed') alert("Permita o microfone no cadeado lá em cima!");
     };
 
     recognition.start();
 }
 
-function finishVistoria(finalText) {
-    isListening = false;
-    if(recognition) {
-        recognition.onresult = null;
-        recognition.stop();
-    }
-
-    const badge = document.getElementById('badge');
-    badge.innerText = "VISTORIA FINALIZADA";
-    badge.className = "status-badge waiting";
+function finalizar(textoFinal) {
+    gravando = false;
+    if(recognition) recognition.stop();
 
     const encontrados = [];
-    for (const [erro, palavras] of Object.entries(dicionario)) {
-        if (palavras.some(p => finalText.includes(p))) {
+    for (const erro in dicionario) {
+        if (dicionario[erro].some(p => textoFinal.includes(p))) {
             encontrados.push(erro);
         }
     }
 
-    const listDiv = document.getElementById('resultsList');
+    const list = document.getElementById('resultsList');
     if(encontrados.length === 0) {
-        listDiv.innerHTML = "<div class='ok-card'>✓ EQUIPAMENTO EM PERFEITO ESTADO</div>";
+        list.innerHTML = "<b style='color:#4ade80'>✓ TUDO OK</b>";
     } else {
         encontrados.forEach(err => {
-            listDiv.innerHTML += `<div class="erro-card">❌ ${err}</div>`;
+            list.innerHTML += `<div class="erro-card">❌ ${err}</div>`;
         });
     }
 
-    // Reset Sequence
-    let count = 5;
-    const timer = setInterval(() => {
-        document.getElementById('countdown').innerText = count--;
-        if(count < 0) {
-            clearInterval(timer);
-            location.reload();
-        }
+    let c = 5;
+    setInterval(() => {
+        document.getElementById('countdown').innerText = c--;
+        if(c < 0) location.reload();
     }, 1000);
 }
 </script>
