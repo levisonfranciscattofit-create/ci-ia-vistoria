@@ -3,134 +3,129 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo | POC V9.4</title>
+  <title>Cielo Vistoria V9.5</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body class="bg-[#020617] text-white font-sans flex items-center justify-center min-h-screen m-0 p-4">
 
   <div class="bg-[#0f172a] border-2 border-sky-500 rounded-3xl w-full max-w-sm p-8 text-center shadow-2xl">
     <img src="https://logodownload.org/wp-content/uploads/2014/07/cielo-logo-1.png" alt="Cielo" class="h-5 mx-auto mb-10">
     
-    <input id="serial" type="text" placeholder="SERIAL" class="w-full bg-black border border-slate-700 rounded-2xl p-5 text-center text-2xl text-sky-400 mb-8 outline-none uppercase font-mono tracking-tighter">
+    <input id="serial" type="text" placeholder="SERIAL" class="w-full bg-black border border-slate-700 rounded-2xl p-5 text-center text-2xl text-sky-400 mb-8 outline-none uppercase font-mono">
     
-    <button id="btnMain" onclick="iniciar()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-black py-6 rounded-3xl text-xl uppercase tracking-widest transition-all">🎙️ Iniciar Voz</button>
-    <button id="btnStop" onclick="finalizarCiclo()" class="hidden w-full bg-red-600 text-white font-black py-6 rounded-3xl text-xl animate-pulse uppercase">🛑 Finalizar Agora</button>
+    <button id="btnMain" onclick="iniciar()" class="w-full bg-sky-600 text-white font-black py-6 rounded-3xl text-xl uppercase">🎙️ Iniciar Voz</button>
+    <button id="btnStop" onclick="finalizarCiclo()" class="hidden w-full bg-red-600 text-white font-black py-6 rounded-3xl text-xl animate-pulse uppercase">🛑 Finalizar</button>
 
-    <div id="statusArea" class="hidden mt-10 pt-8 border-t border-slate-800 text-left">
-      <p id="fala" class="text-yellow-400 italic font-bold mb-8 text-center text-lg leading-snug">Aguardando voz...</p>
+    <div id="statusArea" class="hidden mt-10 pt-8 border-t border-slate-800">
+      <p id="fala" class="text-yellow-400 italic font-bold mb-8 text-center text-lg">Ouvindo...</p>
       <div id="lista" class="space-y-3"></div>
-      <h1 id="contador" class="text-8xl font-black mt-8 text-white text-center"></h1>
+      <h1 id="contador" class="text-8xl font-black mt-8 text-center"></h1>
     </div>
   </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-const firebaseConfig = {
+<script>
+// Configuração do Firebase (Versão Antiga/Compatível)
+var firebaseConfig = {
   apiKey: "AIzaSyDOCUw3ZQlLUglizIUP1Ive6PA9ee_-5nI",
   authDomain: "poc-realwear.firebaseapp.com",
   databaseURL: "https://poc-realwear-default-rtdb.firebaseio.com",
   projectId: "poc-realwear"
 };
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-const dicionario = {
-    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado", "estourado", "partido", "vidro"],
+var dicionario = {
+    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado", "vidro"],
     "RISCOS NA TELA": ["risco", "riscada", "arranhado", "arranhão", "ralado", "marcado"],
     "FUGA DE LUZ": ["luz", "vazamento", "brilho", "fuga", "borda"],
-    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "afundado", "solto", "botões", "teclas"],
+    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "afundado", "botões"],
     "FALTA DE RELEVO": ["liso", "relevo", "apagado", "serigrafia", "lisa"]
 };
 
-const comandosParar = ["finalizar", "concluir", "feito", "pronto", "terminar", "finaliza", "encerrar", "parar", "ok", "confirmar"];
+var comandosParar = ["finalizar", "concluir", "feito", "pronto", "terminar", "parar", "ok"];
+var recognition;
+var ouvindoAtivo = false;
 
-let recognition;
-let finalizado = false;
-
-window.iniciar = () => {
-    const serial = document.getElementById("serial").value.trim();
+function iniciar() {
+    var serial = document.getElementById("serial").value.trim();
     if(!serial) return alert("Digite o Serial!");
 
-    finalizado = false;
+    ouvindoAtivo = true;
     document.getElementById("btnMain").classList.add("hidden");
     document.getElementById("btnStop").classList.remove("hidden");
     document.getElementById("statusArea").classList.remove("hidden");
     document.getElementById("lista").innerHTML = "";
-    document.getElementById("fala").innerText = "...";
 
-    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!Speech) return alert("Navegador não suporta voz!");
+
     recognition = new Speech();
     recognition.lang = "pt-BR";
     recognition.continuous = true;
     recognition.interimResults = true;
 
-    recognition.onresult = (event) => {
-        if (finalizado) return;
-
-        let transcricaoParcial = "";
-        for (let i = 0; i < event.results.length; i++) {
-            transcricaoParcial += event.results[i][0].transcript;
+    recognition.onresult = function(e) {
+        if(!ouvindoAtivo) return;
+        var total = "";
+        for (var i = 0; i < e.results.length; i++) {
+            total += e.results[i][0].transcript;
         }
-        
-        const textoNormalizado = transcricaoParcial.toLowerCase();
-        document.getElementById("fala").innerText = textoNormalizado;
+        total = total.toLowerCase();
+        document.getElementById("fala").innerText = total;
 
-        // BUSCA IMEDIATA PELO COMANDO DE PARADA
-        for (let cmd of comandosParar) {
-            if (textoNormalizado.includes(cmd)) {
-                finalizado = true; // Trava para não rodar de novo
-                window.finalizarCiclo(textoNormalizado);
+        for (var j = 0; j < comandosParar.length; j++) {
+            if (total.indexOf(comandosParar[j]) !== -1) {
+                finalizarCiclo();
                 break;
             }
         }
     };
-
     recognition.start();
-};
+}
 
-window.finalizarCiclo = (textoParaProcessar) => {
-    if (recognition) {
-        try { recognition.stop(); } catch(e){}
-    }
-    
+function finalizarCiclo() {
+    if(!ouvindoAtivo) return;
+    ouvindoAtivo = false;
+    if(recognition) { try { recognition.stop(); } catch(err){} }
+
     document.getElementById("btnStop").classList.add("hidden");
-    const falaOriginal = textoParaProcessar || document.getElementById("fala").innerText.toLowerCase();
-    const errosEncontrados = [];
+    var falaTecnico = document.getElementById("fala").innerText.toLowerCase();
+    var errosEncontrados = [];
 
-    // Mapeamento do dicionário
-    for (let erro in dicionario) {
-        if (dicionario[erro].some(palavra => falaOriginal.includes(palavra))) {
-            errosEncontrados.push(erro);
+    for (var erro in dicionario) {
+        var palavras = dicionario[erro];
+        for (var k = 0; k < palavras.length; k++) {
+            if (falaTecnico.indexOf(palavras[k]) !== -1) {
+                errosEncontrados.push(erro);
+                break;
+            }
         }
     }
 
-    // Mostrar na tela
-    const ui = document.getElementById("lista");
-    if (errosEncontrados.length === 0) {
-        ui.innerHTML = "<p class='text-green-400 font-black text-center text-xl uppercase'>✓ OK</p>";
+    var ui = document.getElementById("lista");
+    if(errosEncontrados.length === 0) {
+        ui.innerHTML = "<p class='text-green-400 font-black text-center text-xl'>✓ OK</p>";
     } else {
-        errosEncontrados.forEach(e => {
-            ui.innerHTML += `<div class="bg-red-500/10 border-l-4 border-red-500 p-4 text-xs font-black text-left uppercase">❌ ${e}</div>`;
+        errosEncontrados.forEach(function(e) {
+            ui.innerHTML += '<div class="bg-red-500/10 border-l-4 border-red-500 p-4 text-xs font-black uppercase">❌ ' + e + '</div>';
         });
     }
 
-    // Salvar no Firebase
-    push(ref(db, "inspecao"), {
+    db.ref("inspecao").push({
         serial: document.getElementById("serial").value.toUpperCase(),
         defeitos: errosEncontrados,
-        transcricao: falaOriginal,
+        transcricao: falaTecnico,
         data: new Date().toLocaleString()
     });
 
-    let c = 4;
-    const t = setInterval(() => {
+    var c = 5;
+    var t = setInterval(function() {
         document.getElementById("contador").innerText = c--;
         if(c < 0) { clearInterval(t); location.reload(); }
     }, 1000);
-};
+}
 </script>
 </body>
 </html>
