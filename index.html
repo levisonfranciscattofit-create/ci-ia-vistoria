@@ -2,81 +2,68 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Cielo IA | Vistoria Pro V11</title>
+  <title>Cielo Vistoria IA | V12</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   
   <style>
-    :root { --primary: #0ea5e9; --accent: #38bdf8; --danger: #f43f5e; --bg: #020617; --card: #0f172a; }
-    body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    :root { --cielo-blue: #00aeef; --cielo-dark: #002d4b; --danger: #ff4b5c; --bg: #010a12; }
+    body { 
+      background: radial-gradient(circle at center, #003d66 0%, var(--bg) 100%);
+      color: white; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden;
+    }
+    .glass-card { 
+      background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(0, 174, 239, 0.3);
+      border-radius: 40px; width: 450px; padding: 45px; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.5);
+    }
+    .logo-cielo { font-family: 'Orbitron', sans-serif; font-size: 26px; font-weight: 900; margin-bottom: 35px; color: var(--cielo-blue); letter-spacing: 2px; }
     
-    .container { width: 450px; text-align: center; perspective: 1000px; }
-    
-    .card { 
-      background: var(--card); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 30px; 
-      padding: 40px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); position: relative; overflow: hidden;
+    input#serialInput { 
+      width: 100%; background: rgba(0,0,0,0.6); border: 2px solid var(--cielo-blue); border-radius: 20px; 
+      padding: 22px; color: #fff; text-align: center; font-size: 36px; font-family: 'Orbitron'; margin-bottom: 30px; outline: none;
     }
 
-    .logo { font-size: 24px; font-weight: 900; margin-bottom: 30px; letter-spacing: -1px; text-transform: uppercase; }
-    .logo span { color: var(--primary); text-shadow: 0 0 15px rgba(14, 165, 233, 0.5); }
-
-    input { 
-      width: 100%; background: rgba(0,0,0,0.4); border: 2px solid #1e293b; border-radius: 18px; 
-      padding: 20px; color: var(--accent); text-align: center; font-size: 32px; font-weight: bold; 
-      margin-bottom: 25px; outline: none; transition: 0.3s; box-sizing: border-box;
-    }
-    input:focus { border-color: var(--primary); box-shadow: 0 0 20px rgba(14, 165, 233, 0.2); }
-
-    .status-area { min-height: 100px; margin-bottom: 20px; }
-    
-    #fala-bubble { 
-      background: rgba(30, 41, 59, 0.5); padding: 15px; border-radius: 15px; 
-      font-style: italic; color: #94a3b8; font-size: 16px; border: 1px solid #334155;
-      display: none; animation: fadeIn 0.5s;
+    .mic-pulse {
+      width: 80px; height: 80px; background: var(--danger); border-radius: 50%; margin: 0 auto 20px;
+      display: none; align-items: center; justify-content: center; animation: pulse 1.5s infinite;
     }
 
-    .btn-emergency { 
-      width: 100%; padding: 20px; border-radius: 18px; border: none; color: white; 
-      font-weight: 800; font-size: 18px; cursor: pointer; text-transform: uppercase;
-      background: linear-gradient(135deg, #e11d48, #9f1239);
-      box-shadow: 0 10px 20px rgba(225, 29, 72, 0.3);
-      display: none; margin-top: 15px; transition: 0.2s;
-    }
-    .btn-emergency:active { transform: scale(0.98); }
-
-    .erro-item { 
-      background: rgba(244, 63, 94, 0.1); border-left: 5px solid var(--danger); 
-      padding: 15px; margin-top: 10px; text-align: left; font-weight: bold;
-      border-radius: 8px; animation: slideIn 0.3s forwards;
+    #fala-preview { 
+      min-height: 80px; font-size: 20px; color: #add8e6; margin-bottom: 25px; 
+      text-shadow: 0 0 10px rgba(0,174,239,0.5); font-weight: 500;
     }
 
-    .success-msg { color: #22c55e; font-size: 22px; font-weight: 800; margin-top: 20px; }
+    .btn-action { 
+      width: 100%; padding: 20px; border-radius: 20px; border: none; color: white; font-weight: 700; 
+      font-size: 18px; cursor: pointer; text-transform: uppercase; background: var(--cielo-blue); 
+      display: none; transition: 0.3s;
+    }
 
-    #countdown { font-size: 70px; font-weight: 900; color: var(--primary); margin-top: 20px; opacity: 0.8; }
+    .erro-tag { 
+      background: rgba(255, 75, 92, 0.2); border: 1px solid var(--danger); padding: 12px; 
+      margin: 10px 0; border-radius: 12px; font-weight: bold; text-align: left;
+    }
 
-    /* Animações */
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    #timer-regressivo { font-size: 80px; font-weight: 900; color: #fff; margin-top: 25px; }
+
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 75, 92, 0.7); } 70% { box-shadow: 0 0 0 25px rgba(255, 75, 92, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 75, 92, 0); } }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <div class="card">
-    <div class="logo">CIELO <span>VISTORIA IA</span></div>
-    
-    <input id="serialInput" type="text" placeholder="BIPE O SERIAL" autofocus autocomplete="off">
+<div class="glass-card">
+  <div class="logo-cielo">CIELO VISTORIA V12</div>
+  
+  <input id="serialInput" type="text" placeholder="BIPE O SERIAL" autofocus autocomplete="off">
 
-    <div class="status-area">
-      <div id="fala-bubble">"Aguardando voz..."</div>
-      <div id="resultsList"></div>
-      <div id="countdown"></div>
-    </div>
+  <div id="mic-area" class="mic-pulse">🎤</div>
+  
+  <div id="fala-preview">Escaneie para começar...</div>
+  <div id="listaErros"></div>
+  <div id="timer-regressivo"></div>
 
-    <button id="btnFinishManual" class="btn-emergency" onclick="triggerFinalizarManual()">
-      🛑 FINALIZAR AGORA
-    </button>
-  </div>
+  <button id="btnManualSubmit" class="btn-action" onclick="finalizar()">FINALIZAR AGORA</button>
 </div>
 
 <script>
@@ -98,28 +85,29 @@ const dicionario = {
 };
 
 let recognition;
-let isRecording = false;
+let isGravando = false;
+let timeoutInativo;
 let scannerTimer;
-let transcricaoFinal = "";
 
-// Foco automático
+// Foco no input
 document.onclick = () => document.getElementById('serialInput').focus();
 
-// Gatilho do Scanner
 document.getElementById('serialInput').addEventListener('input', function() {
     clearTimeout(scannerTimer);
     scannerTimer = setTimeout(() => {
-        if(this.value.length > 2) iniciarVoz();
+        if(this.value.length > 2) iniciarVistoria();
     }, 250); 
 });
 
-function iniciarVoz() {
-    if(isRecording) return;
-    isRecording = true;
+function iniciarVistoria() {
+    if(isGravando) return;
+    isGravando = true;
 
-    document.getElementById('fala-bubble').style.display = "block";
-    document.getElementById('btnFinishManual').style.display = "block";
-    document.getElementById('serialInput').style.opacity = "0.5";
+    // UI Updates
+    document.getElementById('mic-area').style.display = "flex";
+    document.getElementById('btnManualSubmit').style.display = "block";
+    document.getElementById('fala-preview').innerText = "Ouvindo falhas...";
+    document.getElementById('serialInput').style.opacity = "0.3";
     document.getElementById('serialInput').readOnly = true;
 
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -133,58 +121,68 @@ function iniciarVoz() {
         for (let i = 0; i < event.results.length; i++) {
             transcript += event.results[i][0].transcript;
         }
-        transcricaoFinal = transcript.toLowerCase();
-        document.getElementById('fala-bubble').innerText = `"${transcricaoFinal}"`;
         
-        if (["finalizar", "pronto", "ok", "concluir"].some(cmd => transcricaoFinal.includes(cmd))) {
-            finalizarProcesso();
+        let texto = transcript.toLowerCase();
+        document.getElementById('fala-preview').innerText = `"${texto}"`;
+        
+        // --- 1. COMANDO DE VOZ SECO ---
+        if (["ok", "pronto", "parar", "finalizar"].some(cmd => texto.includes(cmd))) {
+            finalizar();
         }
+
+        // --- 2. SILÊNCIO INTELIGENTE (4s) ---
+        clearTimeout(timeoutInativo);
+        timeoutInativo = setTimeout(() => {
+            if(isGravando) finalizar();
+        }, 4000); 
     };
+
     recognition.start();
 }
 
-function triggerFinalizarManual() {
-    finalizarProcesso();
-}
-
-function finalizarProcesso() {
-    if(!isRecording) return;
-    isRecording = false;
+function finalizar() {
+    if(!isGravando) return;
+    isGravando = false;
     
     if(recognition) recognition.stop();
-    document.getElementById('btnFinishManual').style.display = "none";
-    document.getElementById('fala-bubble').style.color = "var(--primary)";
+    clearTimeout(timeoutInativo);
 
+    // UI Changes
+    document.getElementById('mic-area').style.display = "none";
+    document.getElementById('btnManualSubmit').style.display = "none";
+    document.getElementById('fala-preview').innerText = "Processando vistoria...";
+
+    const textoFinal = document.getElementById('fala-preview').innerText.toLowerCase();
     const encontrados = [];
     for (const erro in dicionario) {
-        if (dicionario[erro].some(p => transcricaoFinal.includes(p))) {
+        if (dicionario[erro].some(p => textoFinal.includes(p))) {
             encontrados.push(erro);
         }
     }
 
-    const list = document.getElementById('resultsList');
+    const list = document.getElementById('listaErros');
     if(encontrados.length === 0) {
-        list.innerHTML = "<div class='success-msg'>✓ EQUIPAMENTO OK</div>";
+        list.innerHTML = "<h2 style='color:#00aeef'>✓ EQUIPAMENTO EM PERFEITO ESTADO</h2>";
     } else {
         encontrados.forEach(err => {
-            list.innerHTML += `<div class="erro-item">❌ ${err}</div>`;
+            list.innerHTML += `<div class="erro-tag">❌ ${err}</div>`;
         });
     }
 
-    // ENVIO FIREBASE
+    // --- 3. SUBMETER AO FIREBASE ---
     db.ref("inspecao").push({
         serial: document.getElementById('serialInput').value.toUpperCase(),
         defeitos: encontrados,
-        transcricao: transcricaoFinal,
+        transcricao: textoFinal,
         data: new Date().toLocaleString()
     });
 
-    // CONTADOR
-    let count = 5;
-    const timer = setInterval(() => {
-        document.getElementById('countdown').innerText = count--;
-        if(count < 0) {
-            clearInterval(timer);
+    // --- 4. REGRESSIVO DE 5s ---
+    let c = 5;
+    const t = setInterval(() => {
+        document.getElementById('timer-regressivo').innerText = c--;
+        if(c < 0) {
+            clearInterval(t);
             location.reload();
         }
     }, 1000);
