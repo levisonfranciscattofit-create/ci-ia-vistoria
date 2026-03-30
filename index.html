@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo | V9.2 POC</title>
+  <title>Cielo | V9.3 POC</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#020617] text-white font-sans flex items-center justify-center min-h-screen m-0 p-4">
@@ -14,7 +14,7 @@
     <input id="serial" type="text" placeholder="SERIAL" class="w-full bg-black border border-slate-700 rounded-2xl p-5 text-center text-2xl text-sky-400 mb-8 outline-none uppercase font-mono tracking-tighter">
     
     <button id="btnMain" onclick="iniciar()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-black py-6 rounded-3xl text-xl uppercase tracking-widest transition-all">🎙️ Iniciar Voz</button>
-    <button id="btnStop" onclick="finalizarCiclo()" class="hidden w-full bg-red-600 text-white font-black py-6 rounded-3xl text-xl animate-pulse uppercase">🛑 Parar / Finalizar</button>
+    <button id="btnStop" onclick="finalizarCiclo()" class="hidden w-full bg-red-600 text-white font-black py-6 rounded-3xl text-xl animate-pulse uppercase">🛑 Finalizar Agora</button>
 
     <div id="statusArea" class="hidden mt-10 pt-8 border-t border-slate-800 text-left">
       <p id="fala" class="text-yellow-400 italic font-bold mb-8 text-center text-lg leading-snug">Ouvindo...</p>
@@ -45,21 +45,21 @@ const dicionario = {
     "FALTA DE RELEVO": ["liso", "relevo", "apagado", "serigrafia", "carcaça lisa", "sem marcação", "lisa"]
 };
 
-// COMANDOS PARA FECHAR O CICLO
-const comandosParar = ["finalizar", "concluir", "feito", "pronto", "terminar", "finaliza", "concluído"];
+const comandosParar = ["finalizar", "concluir", "feito", "pronto", "terminar", "finaliza", "concluído", "encerrar", "parar"];
 
 let recognition;
-let textoFinal = "";
+let ouvindoAtivo = false;
 
 window.iniciar = () => {
     const serial = document.getElementById("serial").value.trim();
     if(!serial) return alert("Digite o Serial!");
 
+    ouvindoAtivo = true;
     document.getElementById("btnMain").classList.add("hidden");
     document.getElementById("btnStop").classList.remove("hidden");
     document.getElementById("statusArea").classList.remove("hidden");
     document.getElementById("lista").innerHTML = "";
-    textoFinal = "";
+    document.getElementById("fala").innerText = "Ouvindo...";
 
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new Speech();
@@ -68,26 +68,32 @@ window.iniciar = () => {
     recognition.interimResults = true;
 
     recognition.onresult = (e) => {
-        let parcial = "";
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-            if (e.results[i].isFinal) textoFinal += e.results[i][0].transcript;
-            else parcial = e.results[i][0].transcript;
+        if (!ouvindoAtivo) return;
+
+        let textoAtual = "";
+        for (let i = 0; i < e.results.length; i++) {
+            textoAtual += e.results[i][0].transcript;
         }
-        const total = (textoFinal + " " + parcial).toLowerCase();
+        
+        const total = textoAtual.toLowerCase();
         document.getElementById("fala").innerText = total;
 
-        // Verifica se falou algum comando de parada
-        const deveParar = comandosParar.some(cmd => total.includes(cmd));
-        if(deveParar) {
+        // CHECAGEM AGRESSIVA DE PARADA
+        const encontrouComando = comandosParar.some(cmd => total.includes(cmd));
+        if (encontrouComando) {
             window.finalizarCiclo();
         }
     };
+
+    recognition.onerror = () => { window.finalizarCiclo(); };
     recognition.start();
 };
 
 window.finalizarCiclo = () => {
+    if (!ouvindoAtivo) return; // Evita rodar duas vezes
+    ouvindoAtivo = false;
+
     if(recognition) { 
-        recognition.onresult = null; // Para de ouvir imediatamente
         try { recognition.stop(); } catch(e){} 
     }
     
@@ -95,16 +101,16 @@ window.finalizarCiclo = () => {
     const falaTecnico = document.getElementById("fala").innerText.toLowerCase();
     const errosEncontrados = [];
 
-    // Lógica do Dicionário
+    // Busca no dicionário
     for (let erroOficial in dicionario) {
-        const palavrasChave = dicionario[erroOficial];
-        const encontrou = palavrasChave.some(palavra => falaTecnico.includes(palavra));
-        if (encontrou) errosEncontrados.push(erroOficial);
+        if (dicionario[erroOficial].some(p => falaTecnico.includes(p))) {
+            errosEncontrados.push(erroOficial);
+        }
     }
 
     const ui = document.getElementById("lista");
     if (errosEncontrados.length === 0) {
-        ui.innerHTML = "<p class='text-green-400 font-black text-center text-xl uppercase font-mono tracking-tighter'>✓ EQUIPAMENTO OK</p>";
+        ui.innerHTML = "<p class='text-green-400 font-black text-center text-xl uppercase'>✓ EQUIPAMENTO OK</p>";
     } else {
         errosEncontrados.forEach(e => {
             ui.innerHTML += `<div class="bg-red-500/10 border-l-4 border-red-500 p-4 text-xs font-black text-left uppercase">❌ ${e}</div>`;
@@ -119,7 +125,6 @@ window.finalizarCiclo = () => {
         data: new Date().toLocaleString()
     });
 
-    // Contagem regressiva para novo teste
     let c = 5;
     const t = setInterval(() => {
         document.getElementById("contador").innerText = c--;
