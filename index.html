@@ -3,35 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo IA | V8.2</title>
+  <title>Cielo IA | POC V8.5</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background: #020617; color: #f8fafc; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .cielo-card { background: #0f172a; border: 2px solid #38bdf8; border-radius: 24px; width: 90%; max-width: 450px; padding: 2rem; text-align: center; }
+    .cielo-card { background: #0f172a; border: 2px solid #38bdf8; border-radius: 24px; width: 90%; max-width: 400px; padding: 2rem; text-align: center; }
+    .btn { transition: all 0.2s; }
+    .btn:active { scale: 0.95; }
   </style>
 </head>
 <body>
 
   <div class="cielo-card">
-    <img src="https://logodownload.org/wp-content/uploads/2014/07/cielo-logo-1.png" alt="Cielo" class="h-8 mx-auto mb-6">
-    <input id="serial" type="text" placeholder="SERIAL" class="w-full bg-black border border-slate-700 rounded-xl p-4 text-center text-xl text-sky-400 mb-4 outline-none focus:border-sky-400 uppercase font-mono">
+    <img src="https://logodownload.org/wp-content/uploads/2014/07/cielo-logo-1.png" alt="Cielo" class="h-6 mx-auto mb-6">
     
-    <button id="btnMain" onclick="iniciar()" class="w-full bg-sky-600 text-white font-bold py-5 rounded-xl text-lg">🎙️ INICIAR VOZ</button>
-    <button id="btnStop" onclick="forcarFinalizar()" class="hidden w-full bg-red-600 text-white font-bold py-5 rounded-xl text-lg animate-pulse">🛑 FINALIZAR AGORA</button>
+    <input id="serial" type="text" placeholder="SERIAL" class="w-full bg-black border border-slate-700 rounded-xl p-4 text-center text-xl text-sky-400 mb-4 outline-none uppercase font-mono">
+    
+    <button id="btnMain" onclick="iniciar()" class="btn w-full bg-sky-600 text-white font-bold py-5 rounded-xl text-lg shadow-lg shadow-sky-900/20">🎙️ OUVIR ERROS</button>
+    <button id="btnStop" onclick="forcarFinalizar()" class="hidden btn w-full bg-red-600 text-white font-bold py-5 rounded-xl text-lg animate-pulse">🛑 FINALIZAR AGORA</button>
 
     <div id="statusArea" class="hidden mt-6 pt-6 border-t border-slate-800 text-left">
-      <p id="fala" class="text-yellow-400 italic font-bold text-center mb-4">...</p>
+      <p id="fala" class="text-yellow-400 italic font-bold text-center mb-4 text-sm">...</p>
       <div id="lista" class="space-y-2"></div>
-      <h1 id="contador" class="text-6xl font-black text-center mt-4 text-white"></h1>
+      <h1 id="contador" class="text-7xl font-black text-center mt-4 text-white"></h1>
     </div>
-    <p id="debug" class="text-[10px] text-red-500 mt-4 break-all opacity-50"></p>
+    
+    <p id="debug" class="text-[10px] text-red-500 mt-4 break-all opacity-40 text-center"></p>
   </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-const API_KEY = "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"; // ⚠️ COLOQUE SUA KEY AQUI
+const API_KEY = "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"; // ⚠️ SUA CHAVE AQUI
 
 const firebaseConfig = {
   apiKey: "AIzaSyDOCUw3ZQlLUglizIUP1Ive6PA9ee_-5nI",
@@ -47,13 +51,18 @@ let recognition;
 let chunks = [];
 let serialGlobal = "";
 
-const listaDefeitos = [
-  "GABINETE SUPERIOR (PRESTADOR)", "AMASSADOS (INCLUSIVE AO REDOR DO DISPLAY VISOR)", "RISCO/ARRANHADOS/RALADOS SUPERIOR", "MANCHAS GABINETE SUPERIOR", "SERIGRAFIA AUSENTE/DESGASTADO", "GABINETE INFERIOR (PRESTADOR)", "AMASSADOS GABINETE INFERIOR", "RISCOS/ARRANHADOS/RALADOS INFERIOR", "MANCHAS GABINETE INFERIOR", "PROBLEMA DE DISPLAY/VISOR (FABRICANTE)", "RISCOS OU PONTOS VISIVEIS NO DISPLAY/VISOR APÓS LIGADO", "QUEBRADOS OU TRINCADOS NO DISPLAY VISOR", "TECLAS QUEBRADAS/AVARIADAS", "FUGA DE LUZ EM VOLTA DO CARACTER", "FUGA DE LUZ NO VISOR", "NÃO LIGA", "ALERT/TAMPER", "NÃO CARREGA BATERIA", "TECLADO NÃO FUNCIONA", "NÃO LÊ CHIP DO CARTÃO", "TAMPA DA BOBINA NÃO FECHA", "AUSÊNCIA DE PARAFUSO", "PEZAO QUEBRADO"
-];
+// A LISTA AGORA É CURTA E OBJETIVA
+const MAPA_ERROS = {
+  "RISCOS NA TELA": ["risco", "arranhado", "ralado", "riscos na tela", "tela riscada"],
+  "FALTA DE RELEVO": ["relevo", "sem relevo", "falta de relevo", "serigrafia", "apagado"],
+  "TECLAS DANIFICADAS": ["teclado", "tecla", "botão", "quebrado", "teclas danificadas", "tecla solta"],
+  "DISPLAY QUEBRADO": ["tela quebrada", "visor", "display", "trincado", "quebrado", "display quebrado"],
+  "FUGA DE LUZ": ["luz", "fuga de luz", "vazando luz", "brilho lateral", "fuga"]
+};
 
 window.iniciar = () => {
   serialGlobal = document.getElementById("serial").value.trim();
-  if(!serialGlobal) return alert("Insira o Serial primeiro!");
+  if(!serialGlobal) return alert("Serial?");
   chunks = [];
   document.getElementById("btnMain").classList.add("hidden");
   document.getElementById("btnStop").classList.remove("hidden");
@@ -72,9 +81,9 @@ window.iniciar = () => {
       if (e.results[i].isFinal) chunks.push(e.results[i][0].transcript);
       else parcial = e.results[i][0].transcript;
     }
-    const total = (chunks.join(" ") + " " + parcial).toLowerCase();
-    document.getElementById("fala").innerText = total;
-    if(total.includes("finalizar") || total.includes("pronto")) window.forcarFinalizar();
+    const t = (chunks.join(" ") + " " + parcial).toLowerCase();
+    document.getElementById("fala").innerText = t;
+    if(t.includes("finalizar") || t.includes("pronto")) window.forcarFinalizar();
   };
   recognition.start();
 };
@@ -82,18 +91,17 @@ window.iniciar = () => {
 window.forcarFinalizar = async () => {
   if(recognition) { recognition.onresult = null; try{ recognition.stop(); }catch(i){} }
   document.getElementById("btnStop").classList.add("hidden");
-
   const relato = chunks.join(" ").toLowerCase();
 
   try {
     const resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${API_KEY}` },
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + API_KEY.trim() },
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "Você é um classificador de defeitos rígido. Compare o relato do usuário com a lista oficial. Retorne APENAS os defeitos que o usuário CITOU CLARAMENTE. Se ele não citou nenhum, retorne um array vazio []. Não invente. Lista Oficial: " + listaDefeitos.join(", ") },
-          { role: "user", content: "Relato do Técnico: " + relato }
+          { role: "system", content: "Classifique o relato do técnico em uma ou mais destas categorias: RISCOS NA TELA, FALTA DE RELEVO, TECLAS DANIFICADAS, DISPLAY QUEBRADO, FUGA DE LUZ. Se ele falar algo parecido (ex: tela trincada = DISPLAY QUEBRADO), use a categoria correta. Retorne JSON: {\"erros\": []}" },
+          { role: "user", content: relato }
         ],
         temperature: 0,
         response_format: { type: "json_object" }
@@ -101,33 +109,28 @@ window.forcarFinalizar = async () => {
     });
 
     const data = await resp.json();
-    const content = JSON.parse(data.choices[0].message.content);
-    // Pega o array de qualquer chave que a IA criar (defeitos, erros, etc)
-    let achados = Object.values(content)[0] || [];
-    if(!Array.isArray(achados)) achados = [];
-    
-    // Filtro final para garantir que o que a IA mandou existe na nossa lista
-    const validados = achados.filter(d => listaDefeitos.includes(d.toUpperCase()) || listaDefeitos.includes(d));
-
-    const ui = document.getElementById("lista");
-    if (validados.length === 0) {
-      ui.innerHTML = "<p class='text-green-500 font-bold text-center'>✓ EQUIPAMENTO OK</p>";
-    } else {
-      validados.forEach(d => {
-        ui.innerHTML += `<div class="bg-red-900/30 p-2 border-l-4 border-red-500 text-[10px] font-bold text-red-200">❌ ${d}</div>`;
-      });
+    let achados = [];
+    if(data.choices) {
+        const content = JSON.parse(data.choices[0].message.content);
+        achados = (content.erros || Object.values(content)[0] || []);
     }
 
-    push(ref(db, "inspecao"), { serial: serialGlobal, defeitos: validados, relato_original: relato, data: new Date().toISOString() });
+    const ui = document.getElementById("lista");
+    ui.innerHTML = achados.length ? "" : "<p class='text-green-500 font-bold text-center'>✓ OK</p>";
+    achados.forEach(d => {
+      ui.innerHTML += `<div class="bg-red-900/30 p-3 border-l-4 border-red-500 text-xs font-bold text-red-200 uppercase">❌ ${d}</div>`;
+    });
 
-    let c = 5;
+    push(ref(db, "inspecao"), { serial: serialGlobal, defeitos: achados, relato_voz: relato, data: new Date().toISOString() });
+
+    let c = 4;
     const t = setInterval(() => {
       document.getElementById("contador").innerText = c--;
       if(c < 0) { clearInterval(t); location.reload(); }
     }, 1000);
 
   } catch(e) {
-    document.getElementById("debug").innerText = "ERRO IA: " + e.message;
+    document.getElementById("debug").innerText = "Erro: " + e.message;
   }
 };
 </script>
