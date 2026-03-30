@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo IA | V8.1</title>
+  <title>Cielo IA | V8.2</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background: #020617; color: #f8fafc; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
     .cielo-card { background: #0f172a; border: 2px solid #38bdf8; border-radius: 24px; width: 90%; max-width: 450px; padding: 2rem; text-align: center; }
-    .loading { border: 4px solid #f3f3f3; border-top: 4px solid #38bdf8; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -17,14 +15,14 @@
   <div class="cielo-card">
     <img src="https://logodownload.org/wp-content/uploads/2014/07/cielo-logo-1.png" alt="Cielo" class="h-8 mx-auto mb-6">
     <input id="serial" type="text" placeholder="SERIAL" class="w-full bg-black border border-slate-700 rounded-xl p-4 text-center text-xl text-sky-400 mb-4 outline-none focus:border-sky-400 uppercase font-mono">
-    <button id="btnMain" onclick="iniciar()" class="w-full bg-sky-600 text-white font-bold py-5 rounded-xl text-lg">🎙️ INICIAR VISTORIA</button>
+    
+    <button id="btnMain" onclick="iniciar()" class="w-full bg-sky-600 text-white font-bold py-5 rounded-xl text-lg">🎙️ INICIAR VOZ</button>
     <button id="btnStop" onclick="forcarFinalizar()" class="hidden w-full bg-red-600 text-white font-bold py-5 rounded-xl text-lg animate-pulse">🛑 FINALIZAR AGORA</button>
 
-    <div id="statusArea" class="hidden mt-6 pt-6 border-t border-slate-800">
-      <div id="loader" class="hidden"><div class="loading"></div><p class="text-xs text-sky-400">IA PROCESSANDO...</p></div>
-      <p id="fala" class="text-yellow-400 italic font-bold text-lg mb-4">...</p>
-      <div id="lista" class="text-left space-y-2"></div>
-      <h1 id="contador" class="text-6xl font-black mt-4"></h1>
+    <div id="statusArea" class="hidden mt-6 pt-6 border-t border-slate-800 text-left">
+      <p id="fala" class="text-yellow-400 italic font-bold text-center mb-4">...</p>
+      <div id="lista" class="space-y-2"></div>
+      <h1 id="contador" class="text-6xl font-black text-center mt-4 text-white"></h1>
     </div>
     <p id="debug" class="text-[10px] text-red-500 mt-4 break-all opacity-50"></p>
   </div>
@@ -33,8 +31,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// ⚠️ COLOQUE SUA CHAVE ABAIXO
-const API_KEY = "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"; 
+const API_KEY = "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"; // ⚠️ COLOQUE SUA KEY AQUI
 
 const firebaseConfig = {
   apiKey: "AIzaSyDOCUw3ZQlLUglizIUP1Ive6PA9ee_-5nI",
@@ -50,16 +47,19 @@ let recognition;
 let chunks = [];
 let serialGlobal = "";
 
-const listaDefeitos = ["GABINETE SUPERIOR (PRESTADOR)", "AMASSADOS (INCLUSIVE AO REDOR DO DISPLAY VISOR)", "RISCO/ARRANHADOS/RALADOS SUPERIOR", "MANCHAS GABINETE SUPERIOR", "SERIGRAFIA AUSENTE/DESGASTADO", "GABINETE INFERIOR (PRESTADOR)", "AMASSADOS GABINETE INFERIOR", "RISCOS/ARRANHADOS/RALADOS INFERIOR", "MANCHAS GABINETE INFERIOR", "PROBLEMA DE DISPLAY/VISOR (FABRICANTE)", "RISCOS OU PONTOS VISIVEIS NO DISPLAY/VISOR APÓS LIGADO", "QUEBRADOS OU TRINCADOS NO DISPLAY VISOR", "TECLAS QUEBRADAS/AVARIADAS", "FUGA DE LUZ EM VOLTA DO CARACTER", "FUGA DE LUZ NO VISOR", "NÃO LIGA", "ALERT/TAMPER", "NÃO CARREGA BATERIA", "TECLADO NÃO FUNCIONA", "NÃO LÊ CHIP DO CARTÃO", "TAMPA DA BOBINA NÃO FECHA", "AUSÊNCIA DE PARAFUSO", "PEZAO QUEBRADO"];
+const listaDefeitos = [
+  "GABINETE SUPERIOR (PRESTADOR)", "AMASSADOS (INCLUSIVE AO REDOR DO DISPLAY VISOR)", "RISCO/ARRANHADOS/RALADOS SUPERIOR", "MANCHAS GABINETE SUPERIOR", "SERIGRAFIA AUSENTE/DESGASTADO", "GABINETE INFERIOR (PRESTADOR)", "AMASSADOS GABINETE INFERIOR", "RISCOS/ARRANHADOS/RALADOS INFERIOR", "MANCHAS GABINETE INFERIOR", "PROBLEMA DE DISPLAY/VISOR (FABRICANTE)", "RISCOS OU PONTOS VISIVEIS NO DISPLAY/VISOR APÓS LIGADO", "QUEBRADOS OU TRINCADOS NO DISPLAY VISOR", "TECLAS QUEBRADAS/AVARIADAS", "FUGA DE LUZ EM VOLTA DO CARACTER", "FUGA DE LUZ NO VISOR", "NÃO LIGA", "ALERT/TAMPER", "NÃO CARREGA BATERIA", "TECLADO NÃO FUNCIONA", "NÃO LÊ CHIP DO CARTÃO", "TAMPA DA BOBINA NÃO FECHA", "AUSÊNCIA DE PARAFUSO", "PEZAO QUEBRADO"
+];
 
 window.iniciar = () => {
   serialGlobal = document.getElementById("serial").value.trim();
-  if(!serialGlobal) return alert("Serial?");
+  if(!serialGlobal) return alert("Insira o Serial primeiro!");
   chunks = [];
   document.getElementById("btnMain").classList.add("hidden");
   document.getElementById("btnStop").classList.remove("hidden");
   document.getElementById("statusArea").classList.remove("hidden");
-  
+  document.getElementById("lista").innerHTML = "";
+
   const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new Speech();
   recognition.lang = "pt-BR";
@@ -72,9 +72,9 @@ window.iniciar = () => {
       if (e.results[i].isFinal) chunks.push(e.results[i][0].transcript);
       else parcial = e.results[i][0].transcript;
     }
-    const texto = (chunks.join(" ") + " " + parcial).toLowerCase();
-    document.getElementById("fala").innerText = texto;
-    if(texto.includes("finalizar") || texto.includes("pronto")) window.forcarFinalizar();
+    const total = (chunks.join(" ") + " " + parcial).toLowerCase();
+    document.getElementById("fala").innerText = total;
+    if(total.includes("finalizar") || total.includes("pronto")) window.forcarFinalizar();
   };
   recognition.start();
 };
@@ -82,9 +82,8 @@ window.iniciar = () => {
 window.forcarFinalizar = async () => {
   if(recognition) { recognition.onresult = null; try{ recognition.stop(); }catch(i){} }
   document.getElementById("btnStop").classList.add("hidden");
-  document.getElementById("loader").classList.remove("hidden");
 
-  const prompt = chunks.join(" ").toLowerCase().replace(/finalizar|pronto/g, "");
+  const relato = chunks.join(" ").toLowerCase();
 
   try {
     const resp = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -92,7 +91,10 @@ window.forcarFinalizar = async () => {
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${API_KEY}` },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: [{ role: "system", content: "Retorne apenas um JSON array com os defeitos encontrados. Lista: " + listaDefeitos.join(", ") }, { role: "user", content: prompt }],
+        messages: [
+          { role: "system", content: "Você é um classificador de defeitos rígido. Compare o relato do usuário com a lista oficial. Retorne APENAS os defeitos que o usuário CITOU CLARAMENTE. Se ele não citou nenhum, retorne um array vazio []. Não invente. Lista Oficial: " + listaDefeitos.join(", ") },
+          { role: "user", content: "Relato do Técnico: " + relato }
+        ],
         temperature: 0,
         response_format: { type: "json_object" }
       })
@@ -100,16 +102,23 @@ window.forcarFinalizar = async () => {
 
     const data = await resp.json();
     const content = JSON.parse(data.choices[0].message.content);
-    const achados = (content.defeitos || Object.values(content)[0] || []).filter(d => listaDefeitos.includes(d));
+    // Pega o array de qualquer chave que a IA criar (defeitos, erros, etc)
+    let achados = Object.values(content)[0] || [];
+    if(!Array.isArray(achados)) achados = [];
+    
+    // Filtro final para garantir que o que a IA mandou existe na nossa lista
+    const validados = achados.filter(d => listaDefeitos.includes(d.toUpperCase()) || listaDefeitos.includes(d));
 
-    // Exibir e Salvar
     const ui = document.getElementById("lista");
-    ui.innerHTML = achados.length ? "" : "<p class='text-green-500 font-bold'>OK!</p>";
-    achados.forEach(d => {
-      ui.innerHTML += `<div class="bg-red-900/30 p-2 border-l-4 border-red-500 text-[10px] font-bold">❌ ${d}</div>`;
-    });
+    if (validados.length === 0) {
+      ui.innerHTML = "<p class='text-green-500 font-bold text-center'>✓ EQUIPAMENTO OK</p>";
+    } else {
+      validados.forEach(d => {
+        ui.innerHTML += `<div class="bg-red-900/30 p-2 border-l-4 border-red-500 text-[10px] font-bold text-red-200">❌ ${d}</div>`;
+      });
+    }
 
-    push(ref(db, "inspecao"), { serial: serialGlobal, defeitos: achados, data: new Date().toISOString() });
+    push(ref(db, "inspecao"), { serial: serialGlobal, defeitos: validados, relato_original: relato, data: new Date().toISOString() });
 
     let c = 5;
     const t = setInterval(() => {
@@ -118,7 +127,7 @@ window.forcarFinalizar = async () => {
     }, 1000);
 
   } catch(e) {
-    document.getElementById("debug").innerText = "ERRO: " + e.message;
+    document.getElementById("debug").innerText = "ERRO IA: " + e.message;
   }
 };
 </script>
