@@ -2,35 +2,34 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Cielo Vistoria IA | V14 MULTI</title>
+  <title>Cielo Vistoria IA | V15 FINAL</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root { --cielo: #00aeef; --danger: #ff4b5c; --bg: #010a12; }
     body { background: radial-gradient(circle, #003d66 0%, var(--bg) 100%); color: white; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: 40px; width: 450px; padding: 40px; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: 40px; width: 450px; padding: 40px; text-align: center; }
     .logo { font-family: 'Orbitron'; color: var(--cielo); font-size: 24px; margin-bottom: 25px; text-shadow: 0 0 10px var(--cielo); }
     input { width: 100%; background: #000; border: 2px solid var(--cielo); border-radius: 15px; padding: 20px; color: #fff; text-align: center; font-size: 30px; font-family: 'Orbitron'; margin-bottom: 20px; outline: none; box-sizing: border-box; }
-    #fala-preview { min-height: 80px; font-size: 22px; color: #facc15; margin-bottom: 20px; font-weight: bold; line-height: 1.4; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px; }
+    #fala-preview { min-height: 100px; font-size: 20px; color: #facc15; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; line-height: 1.4; word-wrap: break-word; }
     .mic-pulse { width: 60px; height: 60px; background: var(--danger); border-radius: 50%; margin: 0 auto 20px; display: none; animation: pulse 1s infinite; align-items: center; justify-content: center; font-size: 24px; }
-    .btn-finalizar { width: 100%; padding: 18px; border-radius: 15px; border: none; background: var(--cielo); color: white; font-weight: bold; font-size: 18px; cursor: pointer; display: none; margin-bottom: 10px; }
-    .erro-box { background: rgba(255, 75, 92, 0.2); border-left: 5px solid var(--danger); padding: 12px; margin-top: 10px; text-align: left; font-size: 18px; font-weight: bold; animation: slideIn 0.3s forwards; }
-    #timer { font-size: 80px; font-weight: 900; margin-top: 20px; color: var(--cielo); }
+    .btn-finalizar { width: 100%; padding: 20px; border-radius: 15px; border: none; background: var(--cielo); color: white; font-weight: bold; font-size: 18px; cursor: pointer; display: none; margin-bottom: 10px; }
+    .erro-box { background: rgba(255, 75, 92, 0.2); border-left: 5px solid var(--danger); padding: 12px; margin-top: 10px; text-align: left; font-size: 18px; font-weight: bold; }
+    #timer { font-size: 80px; font-weight: 900; color: var(--cielo); }
     @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 75, 92, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(255, 75, 92, 0); } 100% { transform: scale(1); } }
-    @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
   </style>
 </head>
 <body>
 
 <div class="glass">
-  <div class="logo">CIELO VISTORIA V14</div>
+  <div class="logo">CIELO VISTORIA V15</div>
   <input id="serialInput" type="text" placeholder="BIPE O SERIAL" autofocus autocomplete="off">
   
   <div id="micIcon" class="mic-pulse">🎤</div>
-  <div id="fala-preview">Aguardando bipe...</div>
+  <div id="fala-preview">Pronto para o bipe...</div>
   <div id="listaErros"></div>
-  <button id="btnManual" class="btn-finalizar" onclick="forçarFinalizar()">FINALIZAR AGORA</button>
+  <button id="btnManual" class="btn-finalizar" onclick="forçarFinalizar()">CONFIRMAR VISTORIA</button>
   <div id="timer"></div>
 </div>
 
@@ -45,7 +44,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// DICIONÁRIO MULTI-VARREDURA
+// DICIONÁRIO COMPLETO
 const dicionario = {
     "DISPLAY QUEBRADO/TRINCADO": ["tela", "display", "visor", "quebrad", "trinc", "rach", "vidro"],
     "RISCOS NA TELA": ["risc", "arranh", "marc", "ralad"],
@@ -55,8 +54,9 @@ const dicionario = {
 
 let recognition;
 let gravando = false;
-let silenceTimer;
+let silêncioTimer;
 let scannerTimer;
+let textoAcumuladoGlobal = ""; // Onde guardamos TUDO sem apagar nada
 
 document.getElementById('serialInput').addEventListener('input', function() {
     clearTimeout(scannerTimer);
@@ -66,6 +66,7 @@ document.getElementById('serialInput').addEventListener('input', function() {
 function iniciarVoz() {
     if(gravando) return;
     gravando = true;
+    textoAcumuladoGlobal = ""; 
     
     document.getElementById('micIcon').style.display = "flex";
     document.getElementById('btnManual').style.display = "block";
@@ -78,19 +79,26 @@ function iniciarVoz() {
     recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-        let transcript = "";
-        for (let i = 0; i < event.results.length; i++) {
-            transcript += event.results[i][0].transcript;
+        let textoParcial = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+                // Soma a frase final ao acumulador global
+                textoAcumuladoGlobal += event.results[i][0].transcript + " ";
+            } else {
+                textoParcial = event.results[i][0].transcript;
+            }
         }
-        const textoAtual = transcript.toLowerCase();
-        document.getElementById('fala-preview').innerText = `"${textoAtual}"`;
+        
+        // Atualiza a tela com TUDO o que foi falado até agora + o que está sendo processado
+        const textoCompleto = (textoAcumuladoGlobal + textoParcial).toLowerCase();
+        document.getElementById('fala-preview').innerText = textoCompleto;
 
-        // Reset do timer de silêncio (Aumentei para 5s para dar tempo de respirar)
-        clearTimeout(silenceTimer);
-        silenceTimer = setTimeout(() => { if(gravando) forçarFinalizar(); }, 5000);
+        // Reset do silêncio (6 segundos para dar tempo de bipar e falar com calma)
+        clearTimeout(silêncioTimer);
+        silêncioTimer = setTimeout(() => { if(gravando) forçarFinalizar(); }, 6000);
 
-        // Comando de parada
-        if (["ok", "pronto", "finalizar"].some(c => textoAtual.includes(c))) {
+        // Comando de voz rápido para fechar
+        if (textoCompleto.includes("ok") || textoCompleto.includes("pronto") || textoCompleto.includes("finalizar")) {
             forçarFinalizar();
         }
     };
@@ -102,23 +110,24 @@ function forçarFinalizar() {
     if(!gravando) return;
     gravando = false;
     
-    const textoParaAnalise = document.getElementById('fala-preview').innerText.toLowerCase();
+    // Pega o texto final EXATAMENTE como está na tela
+    const textoFinal = document.getElementById('fala-preview').innerText.toLowerCase();
+    
     if(recognition) recognition.stop();
-    clearTimeout(silenceTimer);
+    clearTimeout(silêncioTimer);
 
     document.getElementById('micIcon').style.display = "none";
     document.getElementById('btnManual').style.display = "none";
     
     const encontrados = [];
 
-    // LÓGICA DE VARREDURA TOTAL: Checa categoria por categoria
-    Object.keys(dicionario).forEach(categoria => {
-        const palavrasChave = dicionario[categoria];
-        const temErro = palavrasChave.some(p => textoParaAnalise.includes(p));
-        if (temErro) {
-            encontrados.push(categoria);
+    // VARREDURA INDEPENDENTE (Checa cada item do dicionário no texto todo)
+    for (let erro in dicionario) {
+        const palavrasChave = dicionario[erro];
+        if (palavrasChave.some(p => textoFinal.includes(p))) {
+            encontrados.push(erro);
         }
-    });
+    }
 
     const list = document.getElementById('listaErros');
     if(encontrados.length === 0) {
@@ -129,15 +138,15 @@ function forçarFinalizar() {
         });
     }
 
-    // SALVAR
+    // SALVAR NO FIREBASE
     db.ref("inspecao").push({
         serial: document.getElementById('serialInput').value.toUpperCase(),
         defeitos: encontrados,
-        transcricao: textoParaAnalise,
+        transcricao: textoFinal,
         data: new Date().toLocaleString()
     });
 
-    // RELOAD
+    // CONTAGEM PARA RESET
     let c = 5;
     const t = setInterval(() => {
         document.getElementById('timer').innerText = c--;
