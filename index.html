@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo | POC V9.1 DICIONÁRIO</title>
+  <title>Cielo | V9.2 POC</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#020617] text-white font-sans flex items-center justify-center min-h-screen m-0 p-4">
@@ -14,7 +14,7 @@
     <input id="serial" type="text" placeholder="SERIAL" class="w-full bg-black border border-slate-700 rounded-2xl p-5 text-center text-2xl text-sky-400 mb-8 outline-none uppercase font-mono tracking-tighter">
     
     <button id="btnMain" onclick="iniciar()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-black py-6 rounded-3xl text-xl uppercase tracking-widest transition-all">🎙️ Iniciar Voz</button>
-    <button id="btnStop" onclick="finalizar()" class="hidden w-full bg-red-600 text-white font-black py-6 rounded-3xl text-xl animate-pulse uppercase">🛑 Finalizar</button>
+    <button id="btnStop" onclick="finalizarCiclo()" class="hidden w-full bg-red-600 text-white font-black py-6 rounded-3xl text-xl animate-pulse uppercase">🛑 Parar / Finalizar</button>
 
     <div id="statusArea" class="hidden mt-10 pt-8 border-t border-slate-800 text-left">
       <p id="fala" class="text-yellow-400 italic font-bold mb-8 text-center text-lg leading-snug">Ouvindo...</p>
@@ -37,14 +37,16 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// MAPA DE PALAVRAS-CHAVE (Dicionário Vasto)
 const dicionario = {
-    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado", "estourado", "partido", "vidro", "quebrada", "estourada"],
+    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado", "estourado", "partido", "vidro", "quebrada"],
     "RISCOS NA TELA": ["risco", "riscada", "arranhado", "arranhão", "ralado", "marcado", "riscos", "arranhada"],
     "FUGA DE LUZ": ["luz", "vazamento", "brilho lateral", "fuga", "borda branca", "mancha clara", "vazando"],
-    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "afundado", "solto", "não aperta", "botoes", "botões", "teclas"],
+    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "afundado", "solto", "não aperta", "botões", "teclas"],
     "FALTA DE RELEVO": ["liso", "relevo", "apagado", "serigrafia", "carcaça lisa", "sem marcação", "lisa"]
 };
+
+// COMANDOS PARA FECHAR O CICLO
+const comandosParar = ["finalizar", "concluir", "feito", "pronto", "terminar", "finaliza", "concluído"];
 
 let recognition;
 let textoFinal = "";
@@ -74,19 +76,26 @@ window.iniciar = () => {
         const total = (textoFinal + " " + parcial).toLowerCase();
         document.getElementById("fala").innerText = total;
 
-        if(total.includes("finalizar") || total.includes("pronto")) window.finalizar();
+        // Verifica se falou algum comando de parada
+        const deveParar = comandosParar.some(cmd => total.includes(cmd));
+        if(deveParar) {
+            window.finalizarCiclo();
+        }
     };
     recognition.start();
 };
 
-window.finalizar = () => {
-    if(recognition) { try { recognition.stop(); } catch(e){} }
-    document.getElementById("btnStop").classList.add("hidden");
+window.finalizarCiclo = () => {
+    if(recognition) { 
+        recognition.onresult = null; // Para de ouvir imediatamente
+        try { recognition.stop(); } catch(e){} 
+    }
     
+    document.getElementById("btnStop").classList.add("hidden");
     const falaTecnico = document.getElementById("fala").innerText.toLowerCase();
     const errosEncontrados = [];
 
-    // Lógica de busca no dicionário
+    // Lógica do Dicionário
     for (let erroOficial in dicionario) {
         const palavrasChave = dicionario[erroOficial];
         const encontrou = palavrasChave.some(palavra => falaTecnico.includes(palavra));
@@ -95,23 +104,22 @@ window.finalizar = () => {
 
     const ui = document.getElementById("lista");
     if (errosEncontrados.length === 0) {
-        ui.innerHTML = "<p class='text-green-400 font-black text-center text-xl'>✓ SEM DEFEITOS</p>";
+        ui.innerHTML = "<p class='text-green-400 font-black text-center text-xl uppercase font-mono tracking-tighter'>✓ EQUIPAMENTO OK</p>";
     } else {
         errosEncontrados.forEach(e => {
-            ui.innerHTML += `<div class="bg-red-500/20 border-l-4 border-red-500 p-4 text-xs font-black text-left uppercase">❌ ${e}</div>`;
+            ui.innerHTML += `<div class="bg-red-500/10 border-l-4 border-red-500 p-4 text-xs font-black text-left uppercase">❌ ${e}</div>`;
         });
     }
 
-    // Tenta subir no Firebase (pode falhar localmente, mas a lista aparece na tela!)
-    try {
-        push(ref(db, "inspecao"), {
-            serial: document.getElementById("serial").value.toUpperCase(),
-            defeitos: errosEncontrados,
-            transcricao: falaTecnico,
-            data: new Date().toLocaleString()
-        });
-    } catch(e) { console.log("Firebase ignorado no modo local"); }
+    // Salva no Firebase
+    push(ref(db, "inspecao"), {
+        serial: document.getElementById("serial").value.toUpperCase(),
+        defeitos: errosEncontrados,
+        transcricao: falaTecnico,
+        data: new Date().toLocaleString()
+    });
 
+    // Contagem regressiva para novo teste
     let c = 5;
     const t = setInterval(() => {
         document.getElementById("contador").innerText = c--;
