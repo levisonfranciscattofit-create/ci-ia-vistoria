@@ -2,17 +2,17 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Cielo Vistoria | V17 Operador</title>
+  <title>Cielo Vistoria | V18 Final</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root { --cielo: #00aeef; --danger: #ff4b5c; --bg: #010a12; }
     body { background: radial-gradient(circle, #003d66 0%, var(--bg) 100%); color: white; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: 40px; width: 450px; padding: 40px; text-align: center; }
+    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: 40px; width: 450px; padding: 40px; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
     .logo { font-family: 'Orbitron'; color: var(--cielo); font-size: 22px; margin-bottom: 25px; text-transform: uppercase; }
     input { width: 100%; background: #000; border: 2px solid var(--cielo); border-radius: 15px; padding: 18px; color: #fff; text-align: center; font-size: 28px; font-family: 'Orbitron'; margin-bottom: 20px; outline: none; }
-    #fala-preview { min-height: 120px; font-size: 20px; color: #facc15; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.2); text-align: left; }
+    #fala-preview { min-height: 120px; font-size: 20px; color: #facc15; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.2); text-align: left; word-wrap: break-word; }
     .mic-pulse { width: 50px; height: 50px; background: var(--danger); border-radius: 50%; margin: 0 auto 15px; display: none; animation: pulse 1s infinite; align-items: center; justify-content: center; }
     .erro-box { background: rgba(255, 75, 92, 0.2); border-left: 5px solid var(--danger); padding: 12px; margin-top: 10px; text-align: left; font-size: 18px; font-weight: bold; }
     #timer { font-size: 60px; font-weight: 900; color: var(--cielo); margin-top: 10px; }
@@ -22,17 +22,15 @@
 <body>
 
 <div class="glass">
-  <div class="logo">Cielo Vistoria <span>V17</span></div>
+  <div class="logo">Cielo Vistoria <span>V18</span></div>
   <input id="serialInput" type="text" placeholder="BIPE O SERIAL" autofocus autocomplete="off">
   
   <div id="micIcon" class="mic-pulse">🎤</div>
-  
-  <div style="font-size: 12px; color: #64748b; margin-bottom: 5px; text-align: left; text-transform: uppercase;">Transcrição em Tempo Real:</div>
   <div id="fala-preview">Aguardando bipe...</div>
   
   <div id="listaErros"></div>
   
-  <button id="btnManual" style="width:100%; padding:18px; border-radius:15px; background:var(--cielo); color:white; font-weight:bold; display:none; border:none; cursor:pointer; font-family:'Rajdhani'; font-size:18px;" onclick="forçarFinalizar()">FINALIZAR VISTORIA</button>
+  <button id="btnManual" style="width:100%; padding:18px; border-radius:15px; background:var(--cielo); color:white; font-weight:bold; display:none; border:none; cursor:pointer; font-family:'Rajdhani'; font-size:18px;" onclick="forçarFinalizar()">CONFIRMAR AGORA</button>
   
   <div id="timer"></div>
 </div>
@@ -56,20 +54,20 @@ const dicionario = {
 };
 
 let recognition;
-let gravando = false;
-let silêncioTimer;
+let isRecording = false;
+let silenceTimer;
 let scannerTimer;
-let historicoDeFala = []; // MEMÓRIA INFINITA
+let totalFinalText = ""; // MEMÓRIA EXTERNA QUE NUNCA APAGA
 
 document.getElementById('serialInput').addEventListener('input', function() {
     clearTimeout(scannerTimer);
-    scannerTimer = setTimeout(() => { if(this.value.length > 2) iniciarVoz(); }, 250);
+    scannerTimer = setTimeout(() => { if(this.value.length > 2) startMic(); }, 250);
 });
 
-function iniciarVoz() {
-    if(gravando) return;
-    gravando = true;
-    historicoDeFala = []; // Reseta a memória para o novo bipe
+function startMic() {
+    if(isRecording) return;
+    isRecording = true;
+    totalFinalText = ""; // Reseta para novo atendimento
     
     document.getElementById('micIcon').style.display = "flex";
     document.getElementById('btnManual').style.display = "block";
@@ -78,71 +76,71 @@ function iniciarVoz() {
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new Speech();
     recognition.lang = "pt-BR";
-    recognition.continuous = true; // Mantém o mic aberto mesmo com pausas
-    recognition.interimResults = true; // Mostra o "ao vivo"
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-        let textoDestaRodada = "";
-        
-        // O SEGREDO: Percorrer todos os resultados desde o início da gravação
-        for (let i = 0; i < event.results.length; i++) {
-            textoDestaRodada += event.results[i][0].transcript + " ";
+        let interimText = "";
+        let finalDaRodada = "";
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                totalFinalText += event.results[i][0].transcript + " ";
+            } else {
+                interimText += event.results[i][0].transcript;
+            }
         }
-        
-        // Atualiza a tela com TUDO o que foi acumulado
-        const textoProcessado = textoDestaRodada.toLowerCase();
-        document.getElementById('fala-preview').innerText = textoProcessado;
 
-        // Regra de Finalização por Silêncio: Aumentada para 7s para o operador ter calma
-        clearTimeout(silêncioTimer);
-        silêncioTimer = setTimeout(() => { if(gravando) forçarFinalizar(); }, 7000);
+        // Exibe a SOMA do que já foi fechado com o que está sendo falado agora
+        const liveDisplay = (totalFinalText + interimText).toLowerCase();
+        document.getElementById('fala-preview').innerText = liveDisplay;
 
-        // Se falar "OK" ou "PRONTO", fecha na hora
-        if (textoProcessado.includes("ok") || textoProcessado.includes("pronto") || textoProcessado.includes("finalizar")) {
+        // Gerencia encerramento
+        clearTimeout(silenceTimer);
+        silenceTimer = setTimeout(() => { if(isRecording) forçarFinalizar(); }, 8000);
+
+        if (liveDisplay.includes("ok") || liveDisplay.includes("pronto") || liveDisplay.includes("finalizar")) {
             forçarFinalizar();
         }
     };
 
-    recognition.onerror = (e) => console.log("Erro mic:", e.error);
     recognition.start();
 }
 
 function forçarFinalizar() {
-    if(!gravando) return;
-    gravando = false;
+    if(!isRecording) return;
+    isRecording = false;
     
-    // Captura o texto que está no preview agora
-    const textoFinal = document.getElementById('fala-preview').innerText.toLowerCase();
+    // Análise baseada no que está na tela (que é a soma de tudo)
+    const textToAnalyze = document.getElementById('fala-preview').innerText.toLowerCase();
     
     if(recognition) recognition.stop();
-    clearTimeout(silêncioTimer);
+    clearTimeout(silenceTimer);
 
     document.getElementById('micIcon').style.display = "none";
     document.getElementById('btnManual').style.display = "none";
     
     const encontrados = [];
-
-    // VARREDURA COMPLETA NO TEXTO ACUMULADO
     for (let erro in dicionario) {
-        if (dicionario[erro].some(p => textoFinal.includes(p))) {
+        if (dicionario[erro].some(p => textToAnalyze.includes(p))) {
             encontrados.push(erro);
         }
     }
 
     const list = document.getElementById('listaErros');
     if(encontrados.length === 0) {
-        list.innerHTML = "<h3 style='color:var(--cielo)'>✓ EQUIPAMENTO SEM AVARIAS</h3>";
+        list.innerHTML = "<h3 style='color:var(--cielo)'>✓ EQUIPAMENTO OK</h3>";
     } else {
         encontrados.forEach(e => { 
             list.innerHTML += `<div class="erro-box">❌ ${e}</div>`; 
         });
     }
 
-    // SALVAR NO FIREBASE
+    // FIREBASE
     db.ref("inspecao").push({
         serial: document.getElementById('serialInput').value.toUpperCase(),
         defeitos: encontrados,
-        transcricao: textoFinal,
+        transcricao: textToAnalyze,
         data: new Date().toLocaleString()
     });
 
