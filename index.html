@@ -3,40 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo IA | V8.10 FIXED</title>
+  <title>Cielo | POC V9.1 DICIONÁRIO</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { background: #020617; color: #f8fafc; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 1rem; }
-    .cielo-card { background: #0f172a; border: 2px solid #38bdf8; border-radius: 24px; width: 100%; max-width: 400px; padding: 2rem; text-align: center; }
-    .btn-main { background: #0284c7; transition: all 0.2s; }
-    .btn-main:active { transform: scale(0.95); }
-  </style>
 </head>
-<body>
+<body class="bg-[#020617] text-white font-sans flex items-center justify-center min-h-screen m-0 p-4">
 
-  <div class="cielo-card">
-    <img src="https://logodownload.org/wp-content/uploads/2014/07/cielo-logo-1.png" alt="Cielo" class="h-6 mx-auto mb-8">
-    <input id="serial" type="text" placeholder="SERIAL" class="w-full bg-black border border-slate-700 rounded-2xl p-4 text-center text-xl text-sky-400 mb-6 outline-none uppercase font-mono tracking-widest">
-    <button id="btnMain" onclick="iniciar()" class="btn-main w-full text-white font-black py-6 rounded-2xl text-xl uppercase">🎙️ Iniciar Voz</button>
-    <button id="btnStop" onclick="forcarFinalizar()" class="hidden w-full bg-red-600 text-white font-black py-6 rounded-2xl text-xl animate-pulse uppercase">🛑 Finalizar Agora</button>
+  <div class="bg-[#0f172a] border-2 border-sky-500 rounded-3xl w-full max-w-sm p-8 text-center shadow-2xl">
+    <img src="https://logodownload.org/wp-content/uploads/2014/07/cielo-logo-1.png" alt="Cielo" class="h-5 mx-auto mb-10">
+    
+    <input id="serial" type="text" placeholder="SERIAL" class="w-full bg-black border border-slate-700 rounded-2xl p-5 text-center text-2xl text-sky-400 mb-8 outline-none uppercase font-mono tracking-tighter">
+    
+    <button id="btnMain" onclick="iniciar()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-black py-6 rounded-3xl text-xl uppercase tracking-widest transition-all">🎙️ Iniciar Voz</button>
+    <button id="btnStop" onclick="finalizar()" class="hidden w-full bg-red-600 text-white font-black py-6 rounded-3xl text-xl animate-pulse uppercase">🛑 Finalizar</button>
 
-    <div id="statusArea" class="hidden mt-8 pt-8 border-t border-slate-800 text-left">
-      <p id="fala" class="text-yellow-400 italic font-bold mb-6 text-center leading-tight">Ouvindo...</p>
+    <div id="statusArea" class="hidden mt-10 pt-8 border-t border-slate-800 text-left">
+      <p id="fala" class="text-yellow-400 italic font-bold mb-8 text-center text-lg leading-snug">Ouvindo...</p>
       <div id="lista" class="space-y-3"></div>
-      <h1 id="contador" class="text-8xl font-black mt-6 text-white text-center"></h1>
-    </div>
-    <div id="errorBox" class="hidden mt-6 p-4 bg-red-900/40 border border-red-500 rounded-2xl">
-        <p id="debug" class="text-[10px] text-red-200 font-mono break-all uppercase font-bold text-left"></p>
+      <h1 id="contador" class="text-8xl font-black mt-8 text-white text-center"></h1>
     </div>
   </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-// ⚠️ COLOQUE SUA CHAVE ESCRITA DE TRÁS PARA FRENTE AQUI:
-const chaveInvertida = "AEOuDDon4cI3s6scRMKlqwC-wJXu7k481DPbw1soMuOEaidR7sarn5e_5g4_4g_cgtRrJvizgxxWofcJFkbl3TPQ_k5rodPQX7x8pFdfD95UkSW2XMsp33XE5Em7dnOKum2uXIlqVRTqpIDeASHF_h4DJGDARD-jorp-ks"; 
-const API_KEY = chaveInvertida.split("").reverse().join("");
 
 const firebaseConfig = {
   apiKey: "AIzaSyDOCUw3ZQlLUglizIUP1Ive6PA9ee_-5nI",
@@ -48,85 +37,86 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-let recognition;
-let chunks = [];
-let serialGlobal = "";
-
-window.iniciar = () => {
-  serialGlobal = document.getElementById("serial").value.trim();
-  if(!serialGlobal) return alert("Serial?");
-  chunks = [];
-  document.getElementById("btnMain").classList.add("hidden");
-  document.getElementById("btnStop").classList.remove("hidden");
-  document.getElementById("statusArea").classList.remove("hidden");
-  document.getElementById("errorBox").classList.add("hidden");
-  
-  const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new Speech();
-  recognition.lang = "pt-BR";
-  recognition.continuous = true;
-  recognition.interimResults = true;
-
-  recognition.onresult = (e) => {
-    let parcial = "";
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) chunks.push(e.results[i][0].transcript);
-      else parcial = e.results[i][0].transcript;
-    }
-    const t = (chunks.join(" ") + " " + parcial).toLowerCase();
-    document.getElementById("fala").innerText = t;
-    if(t.includes("finalizar") || t.includes("pronto")) window.forcarFinalizar();
-  };
-  recognition.start();
+// MAPA DE PALAVRAS-CHAVE (Dicionário Vasto)
+const dicionario = {
+    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado", "estourado", "partido", "vidro", "quebrada", "estourada"],
+    "RISCOS NA TELA": ["risco", "riscada", "arranhado", "arranhão", "ralado", "marcado", "riscos", "arranhada"],
+    "FUGA DE LUZ": ["luz", "vazamento", "brilho lateral", "fuga", "borda branca", "mancha clara", "vazando"],
+    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "afundado", "solto", "não aperta", "botoes", "botões", "teclas"],
+    "FALTA DE RELEVO": ["liso", "relevo", "apagado", "serigrafia", "carcaça lisa", "sem marcação", "lisa"]
 };
 
-window.forcarFinalizar = async () => {
-  if(recognition) { recognition.onresult = null; try{ recognition.stop(); }catch(i){} }
-  document.getElementById("btnStop").classList.add("hidden");
-  const relato = chunks.join(" ").toLowerCase();
+let recognition;
+let textoFinal = "";
 
-  try {
-    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + API_KEY.trim() },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "Extraia apenas estes erros: RISCOS NA TELA, FALTA DE RELEVO, TECLAS DANIFICADAS, DISPLAY QUEBRADO, FUGA DE LUZ. Retorne JSON: {\"erros\": []}" },
-          { role: "user", content: relato }
-        ],
-        temperature: 0,
-        response_format: { type: "json_object" }
-      })
-    });
+window.iniciar = () => {
+    const serial = document.getElementById("serial").value.trim();
+    if(!serial) return alert("Digite o Serial!");
 
-    if(!resp.ok) {
-        const err = await resp.json();
-        throw new Error(err.error.message || "Erro na API");
+    document.getElementById("btnMain").classList.add("hidden");
+    document.getElementById("btnStop").classList.remove("hidden");
+    document.getElementById("statusArea").classList.remove("hidden");
+    document.getElementById("lista").innerHTML = "";
+    textoFinal = "";
+
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new Speech();
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (e) => {
+        let parcial = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+            if (e.results[i].isFinal) textoFinal += e.results[i][0].transcript;
+            else parcial = e.results[i][0].transcript;
+        }
+        const total = (textoFinal + " " + parcial).toLowerCase();
+        document.getElementById("fala").innerText = total;
+
+        if(total.includes("finalizar") || total.includes("pronto")) window.finalizar();
+    };
+    recognition.start();
+};
+
+window.finalizar = () => {
+    if(recognition) { try { recognition.stop(); } catch(e){} }
+    document.getElementById("btnStop").classList.add("hidden");
+    
+    const falaTecnico = document.getElementById("fala").innerText.toLowerCase();
+    const errosEncontrados = [];
+
+    // Lógica de busca no dicionário
+    for (let erroOficial in dicionario) {
+        const palavrasChave = dicionario[erroOficial];
+        const encontrou = palavrasChave.some(palavra => falaTecnico.includes(palavra));
+        if (encontrou) errosEncontrados.push(erroOficial);
     }
 
-    const data = await resp.json();
-    const result = JSON.parse(data.choices[0].message.content);
-    const erros = result.erros || [];
-
     const ui = document.getElementById("lista");
-    if(!erros.length) ui.innerHTML = "<p class='text-green-400 font-black text-center text-xl uppercase'>✓ SEM DEFEITOS</p>";
-    erros.forEach(e => {
-        ui.innerHTML += `<div class="bg-red-500/20 border-l-4 border-red-500 p-3 text-xs font-black text-red-100 uppercase">❌ ${e}</div>`;
-    });
+    if (errosEncontrados.length === 0) {
+        ui.innerHTML = "<p class='text-green-400 font-black text-center text-xl'>✓ SEM DEFEITOS</p>";
+    } else {
+        errosEncontrados.forEach(e => {
+            ui.innerHTML += `<div class="bg-red-500/20 border-l-4 border-red-500 p-4 text-xs font-black text-left uppercase">❌ ${e}</div>`;
+        });
+    }
 
-    push(ref(db, "inspecao"), { serial: serialGlobal, defeitos: erros, data: new Date().toLocaleString() });
+    // Tenta subir no Firebase (pode falhar localmente, mas a lista aparece na tela!)
+    try {
+        push(ref(db, "inspecao"), {
+            serial: document.getElementById("serial").value.toUpperCase(),
+            defeitos: errosEncontrados,
+            transcricao: falaTecnico,
+            data: new Date().toLocaleString()
+        });
+    } catch(e) { console.log("Firebase ignorado no modo local"); }
 
-    let c = 4;
+    let c = 5;
     const t = setInterval(() => {
         document.getElementById("contador").innerText = c--;
         if(c < 0) { clearInterval(t); location.reload(); }
     }, 1000);
-
-  } catch(e) {
-    document.getElementById("errorBox").classList.remove("hidden");
-    document.getElementById("debug").innerText = "DETALHE: " + e.message;
-  }
 };
 </script>
 </body>
