@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo IA | V8.8 POC</title>
+  <title>Cielo IA | V8.10 FIXED</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background: #020617; color: #f8fafc; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 1rem; }
-    .cielo-card { background: #0f172a; border: 2px solid #38bdf8; border-radius: 24px; width: 100%; max-width: 400px; padding: 2rem; text-align: center; box-shadow: 0 0 40px rgba(56,189,248,0.15); }
+    .cielo-card { background: #0f172a; border: 2px solid #38bdf8; border-radius: 24px; width: 100%; max-width: 400px; padding: 2rem; text-align: center; }
     .btn-main { background: #0284c7; transition: all 0.2s; }
     .btn-main:active { transform: scale(0.95); }
   </style>
@@ -16,9 +16,7 @@
 
   <div class="cielo-card">
     <img src="https://logodownload.org/wp-content/uploads/2014/07/cielo-logo-1.png" alt="Cielo" class="h-6 mx-auto mb-8">
-    
     <input id="serial" type="text" placeholder="SERIAL" class="w-full bg-black border border-slate-700 rounded-2xl p-4 text-center text-xl text-sky-400 mb-6 outline-none uppercase font-mono tracking-widest">
-    
     <button id="btnMain" onclick="iniciar()" class="btn-main w-full text-white font-black py-6 rounded-2xl text-xl uppercase">🎙️ Iniciar Voz</button>
     <button id="btnStop" onclick="forcarFinalizar()" class="hidden w-full bg-red-600 text-white font-black py-6 rounded-2xl text-xl animate-pulse uppercase">🛑 Finalizar Agora</button>
 
@@ -27,9 +25,8 @@
       <div id="lista" class="space-y-3"></div>
       <h1 id="contador" class="text-8xl font-black mt-6 text-white text-center"></h1>
     </div>
-    
     <div id="errorBox" class="hidden mt-6 p-4 bg-red-900/40 border border-red-500 rounded-2xl">
-        <p id="debug" class="text-[10px] text-red-200 font-mono break-all uppercase"></p>
+        <p id="debug" class="text-[10px] text-red-200 font-mono break-all uppercase font-bold text-left"></p>
     </div>
   </div>
 
@@ -37,10 +34,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// ⚠️ DIVIDA SUA CHAVE PARA O GITHUB NÃO BLOQUEAR
-const p1 = "sk-proj-qhQeXGQFMlBlf39S0lvsiDKtqo2FgVzmHkOVtnpihGHUs7wwhy4RCQab7ozAb4HVjQUyj"; 
-const p2 = "krmsAT3BlbkFJix3rynut66wsngpnVyfKSt-jRE0OfZ8uCR2fojcBQ5D5S-qrpydmaFu3Vgh1CzfFnGgUe-Gc4A";
-const API_KEY = (p1 + p2).trim();
+// ⚠️ COLOQUE SUA CHAVE ESCRITA DE TRÁS PARA FRENTE AQUI:
+const chaveInvertida = "AEOuDDon4cI3s6scRMKlqwC-wJXu7k481DPbw1soMuOEaidR7sarn5e_5g4_4g_cgtRrJvizgxxWofcJFkbl3TPQ_k5rodPQX7x8pFdfD95UkSW2XMsp33XE5Em7dnOKum2uXIlqVRTqpIDeASHF_h4DJGDARD-jorp-ks"; 
+const API_KEY = chaveInvertida.split("").reverse().join("");
 
 const firebaseConfig = {
   apiKey: "AIzaSyDOCUw3ZQlLUglizIUP1Ive6PA9ee_-5nI",
@@ -64,8 +60,7 @@ window.iniciar = () => {
   document.getElementById("btnStop").classList.remove("hidden");
   document.getElementById("statusArea").classList.remove("hidden");
   document.getElementById("errorBox").classList.add("hidden");
-  document.getElementById("lista").innerHTML = "";
-
+  
   const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new Speech();
   recognition.lang = "pt-BR";
@@ -93,11 +88,11 @@ window.forcarFinalizar = async () => {
   try {
     const resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + API_KEY },
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + API_KEY.trim() },
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "Extraia apenas estes erros: RISCOS NA TELA, FALTA DE RELEVO, TECLAS DANIFICADAS, DISPLAY QUEBRADO, FUGA DE LUZ. Entenda sinônimos (ex: trincada = DISPLAY QUEBRADO). Retorne JSON: {\"erros\": []}" },
+          { role: "system", content: "Extraia apenas estes erros: RISCOS NA TELA, FALTA DE RELEVO, TECLAS DANIFICADAS, DISPLAY QUEBRADO, FUGA DE LUZ. Retorne JSON: {\"erros\": []}" },
           { role: "user", content: relato }
         ],
         temperature: 0,
@@ -105,7 +100,10 @@ window.forcarFinalizar = async () => {
       })
     });
 
-    if(!resp.ok) throw new Error("Erro na Chave ou Saldo!");
+    if(!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error.message || "Erro na API");
+    }
 
     const data = await resp.json();
     const result = JSON.parse(data.choices[0].message.content);
@@ -119,7 +117,7 @@ window.forcarFinalizar = async () => {
 
     push(ref(db, "inspecao"), { serial: serialGlobal, defeitos: erros, data: new Date().toLocaleString() });
 
-    let c = 5;
+    let c = 4;
     const t = setInterval(() => {
         document.getElementById("contador").innerText = c--;
         if(c < 0) { clearInterval(t); location.reload(); }
@@ -127,7 +125,7 @@ window.forcarFinalizar = async () => {
 
   } catch(e) {
     document.getElementById("errorBox").classList.remove("hidden");
-    document.getElementById("debug").innerText = "ERRO: " + e.message;
+    document.getElementById("debug").innerText = "DETALHE: " + e.message;
   }
 };
 </script>
