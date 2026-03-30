@@ -2,54 +2,79 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Cielo Vistoria | V10.4 Final</title>
+  <title>Cielo Vistoria | V10.6 Final</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  
   <style>
     :root { --primary: #0ea5e9; --danger: #ef4444; --bg: #020617; --card: #0f172a; }
     body { background: var(--bg); color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .card { background: var(--card); border: 2px solid #1e293b; border-radius: 24px; width: 450px; padding: 40px; text-align: center; }
-    input { width: 100%; background: #000; border: 2px solid #334155; border-radius: 16px; padding: 20px; color: var(--primary); text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 25px; outline: none; }
-    .status-badge { width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 20px; }
-    .listening { background: var(--danger); animation: pulse 1.5s infinite; }
+    .card { background: var(--card); border: 2px solid #1e293b; border-radius: 24px; width: 420px; padding: 35px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+    input { width: 100%; background: #000; border: 2px solid #334155; border-radius: 15px; padding: 15px; color: var(--primary); text-align: center; font-size: 28px; font-weight: bold; margin-bottom: 20px; outline: none; }
+    .status-badge { width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 15px; font-size: 13px; }
+    .listening { background: var(--danger); animation: pulse 1.5s infinite; color: white; }
     .waiting { background: #1e293b; color: #64748b; }
-    #fala-preview { color: #facc15; font-style: italic; font-size: 18px; min-height: 60px; }
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+    #fala-preview { color: #facc15; font-style: italic; font-size: 17px; min-height: 50px; margin-bottom: 15px; border: 1px dashed #334155; padding: 10px; border-radius: 10px; }
+    .erro-msg { background: rgba(239, 68, 68, 0.2); border-left: 4px solid var(--danger); padding: 10px; margin-top: 8px; text-align: left; font-size: 13px; font-weight: bold; }
+    #timerDisplay { font-size: 60px; font-weight: 900; margin-top: 15px; color: var(--primary); }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <div style="font-size:22px; font-weight:800; margin-bottom:20px;">CIELO <span>VISTORIA</span></div>
-  <input id="serialInput" type="text" placeholder="ESCANEIE O SERIAL" autofocus>
+  <div style="font-size:22px; font-weight:800; margin-bottom:20px;">CIELO <span>VISTORIA V10.6</span></div>
+  <input id="serialInput" type="text" placeholder="BIPE O SERIAL" autofocus autocomplete="off">
   <div id="badge" class="status-badge waiting">Aguardando Scanner...</div>
   <div id="liveArea" style="display:none">
-    <div id="fala-preview">Iniciando microfone...</div>
+    <div id="fala-preview">Iniciando voz...</div>
     <div id="resultsList"></div>
+    <div id="timerDisplay"></div>
   </div>
 </div>
 
 <script>
+// --- CONFIGURAÇÃO FIREBASE ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDOCUw3ZQlLUglizIUP1Ive6PA9ee_-5nI",
+  authDomain: "poc-realwear.firebaseapp.com",
+  databaseURL: "https://poc-realwear-default-rtdb.firebaseio.com",
+  projectId: "poc-realwear"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// --- DICIONÁRIO ---
+const dicionario = {
+    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado"],
+    "RISCOS NA TELA": ["risco", "arranhado", "marcado"],
+    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado"],
+    "FALTA DE RELEVO": ["liso", "relevo", "apagado"]
+};
+
 let recognition;
-let gravando = false;
+let isActive = false;
 let inputTimer;
 
-// Foco constante
+// Auto-foco
 document.onclick = () => document.getElementById('serialInput').focus();
 
-// AUTO-SUBMIT: Detecta o fim da digitação do Scanner (espera 300ms de silêncio no teclado)
+// Gatilho do Scanner
 document.getElementById('serialInput').addEventListener('input', function() {
     clearTimeout(inputTimer);
     inputTimer = setTimeout(() => {
-        if(this.value.length > 3) startVistoria();
-    }, 300); 
+        if(this.value.length > 2) startProcess();
+    }, 250); 
 });
 
-function startVistoria() {
-    if(gravando) return;
-    gravando = true;
-
-    document.getElementById('badge').innerText = "🛑 OUVINDO...";
+function startProcess() {
+    if(isActive) return;
+    isActive = true;
+    document.getElementById('badge').innerText = "🎙️ OUVINDO...";
     document.getElementById('badge').className = "status-badge listening";
     document.getElementById('liveArea').style.display = "block";
+    document.getElementById('resultsList').innerHTML = "";
+    document.getElementById('timerDisplay').innerText = "";
 
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new Speech();
@@ -58,37 +83,64 @@ function startVistoria() {
     recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-        let texto = "";
+        let transcript = "";
         for (let i = 0; i < event.results.length; i++) {
-            texto += event.results[i][0].transcript;
+            transcript += event.results[i][0].transcript;
         }
-        document.getElementById('fala-preview').innerText = `"${texto.toLowerCase()}"`;
+        let texto = transcript.toLowerCase();
+        document.getElementById('fala-preview').innerText = `"${texto}"`;
         
-        if (["finalizar", "pronto", "ok", "parar"].some(cmd => texto.toLowerCase().includes(cmd))) {
-            finalizar(texto.toLowerCase());
+        if (["finalizar", "pronto", "ok", "concluir"].some(cmd => texto.includes(cmd))) {
+            finalizar(texto);
         }
     };
-
-    recognition.onerror = (event) => {
-        console.log("Erro:", event.error);
-        if(event.error === 'network') {
-            document.getElementById('fala-preview').innerText = "Erro de Rede. Tentando reconectar...";
-            setTimeout(() => { if(gravando) recognition.start(); }, 1000);
-        }
-    };
-
-    try { recognition.start(); } catch(e) { console.log(e); }
+    recognition.start();
 }
 
 function finalizar(textoFinal) {
-    gravando = false;
-    recognition.stop();
-    document.getElementById('badge').innerText = "FINALIZADO";
+    isActive = false;
+    if(recognition) recognition.stop();
+
+    document.getElementById('badge').innerText = "ENVIANDO DADOS...";
     document.getElementById('badge').className = "status-badge waiting";
-    
-    // Aqui você pode inserir o código de salvar no Firebase que te passei antes
-    
-    setTimeout(() => location.reload(), 4000);
+
+    // Lógica de Defeitos
+    const encontrados = [];
+    for (const erro in dicionario) {
+        if (dicionario[erro].some(p => textoFinal.includes(p))) {
+            encontrados.push(erro);
+        }
+    }
+
+    // Exibe na tela
+    const list = document.getElementById('resultsList');
+    if(encontrados.length === 0) {
+        list.innerHTML = "<h3 style='color:#4ade80'>✓ TUDO OK</h3>";
+    } else {
+        encontrados.forEach(err => {
+            list.innerHTML += `<div class="erro-msg">❌ ${err}</div>`;
+        });
+    }
+
+    // SALVA NO FIREBASE
+    db.ref("inspecao").push({
+        serial: document.getElementById('serialInput').value.toUpperCase(),
+        defeitos: encontrados,
+        transcricao: textoFinal,
+        data: new Date().toLocaleString()
+    }).then(() => {
+        console.log("Salvo com sucesso!");
+    });
+
+    // CONTADOR REGRESSIVO
+    let count = 5;
+    const timer = setInterval(() => {
+        document.getElementById('timerDisplay').innerText = count--;
+        if(count < 0) {
+            clearInterval(timer);
+            location.reload();
+        }
+    }, 1000);
 }
 </script>
 </body>
