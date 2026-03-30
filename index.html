@@ -3,126 +3,140 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo V9.7 POC</title>
+  <title>Cielo Vistoria | V10.0 Pro</title>
   <style>
-    body { background-color: #020617; color: white; font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .card { background-color: #0f172a; border: 3px solid #0ea5e9; border-radius: 25px; width: 340px; padding: 40px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-    input { width: 100%; background: #000; border: 2px solid #334155; border-radius: 12px; padding: 15px; color: #38bdf8; text-align: center; font-size: 24px; margin-bottom: 25px; box-sizing: border-box; outline: none; }
-    button { width: 100%; padding: 25px; border-radius: 20px; border: none; color: white; font-weight: bold; font-size: 20px; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
-    .btn-blue { background-color: #0284c7; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4); }
-    .btn-red { background-color: #dc2626; display: none; }
-    #statusArea { margin-top: 25px; border-top: 2px solid #1e293b; padding-top: 20px; display: none; }
-    #fala { color: #facc15; font-style: italic; font-size: 18px; margin-bottom: 20px; min-height: 40px; }
-    .erro-item { background: rgba(220, 38, 38, 0.2); border-left: 5px solid #dc2626; padding: 15px; margin-bottom: 10px; font-size: 14px; font-weight: bold; text-align: left; }
-    .ok-msg { color: #4ade80; font-size: 22px; font-weight: bold; margin-top: 10px; }
-    #contador { font-size: 80px; font-weight: 900; margin-top: 20px; color: #fff; }
-    .logo { font-size: 28px; font-weight: bold; color: #fff; margin-bottom: 30px; letter-spacing: -1px; }
-    .logo span { color: #0ea5e9; }
+    :root { --primary: #0ea5e9; --danger: #ef4444; --bg: #020617; --card: #0f172a; }
+    body { background: var(--bg); color: white; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
+    .card { background: var(--card); border: 2px solid #1e293b; border-radius: 24px; width: 450px; padding: 40px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); transition: all 0.3s; }
+    .card.active { border-color: var(--primary); box-shadow: 0 0 20px rgba(14, 165, 233, 0.2); }
+    .logo { font-size: 22px; font-weight: 800; margin-bottom: 30px; letter-spacing: -1px; }
+    .logo span { color: var(--primary); }
+    input { width: 100%; background: #000; border: 2px solid #334155; border-radius: 16px; padding: 20px; color: var(--primary); text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 25px; box-sizing: border-box; outline: none; transition: 0.3s; }
+    input:focus { border-color: var(--primary); background: #020617; }
+    .status-badge { width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; text-transform: uppercase; font-size: 14px; letter-spacing: 1px; margin-bottom: 20px; transition: 0.3s; }
+    .waiting { background: #1e293b; color: #64748b; }
+    .listening { background: var(--danger); color: white; animation: pulse 1.5s infinite; }
+    #fala-preview { color: #facc15; font-style: italic; font-size: 18px; min-height: 60px; margin-bottom: 20px; line-height: 1.4; }
+    .erro-card { background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger); padding: 16px; margin-top: 10px; text-align: left; font-weight: bold; animation: slideIn 0.3s ease-out; }
+    .ok-card { color: #22c55e; font-size: 24px; font-weight: bold; margin-top: 20px; }
+    #countdown { font-size: 80px; font-weight: 900; margin-top: 20px; opacity: 0.5; }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <div class="logo">CIELO <span>IA</span></div>
-    
-    <input id="serial" type="text" placeholder="SERIAL" autocomplete="off">
-    
-    <button id="btnMain" class="btn-blue" onclick="iniciar()">🎙️ INICIAR VISTORIA</button>
-    <button id="btnStop" class="btn-red" onclick="finalizarCiclo()">🛑 FINALIZAR AGORA</button>
+<div class="card" id="mainCard">
+  <div class="logo">CIELO <span>VISTORIA V10</span></div>
+  
+  <input id="serialInput" type="text" placeholder="BIPE O SERIAL" autofocus autocomplete="off">
+  
+  <div id="badge" class="status-badge waiting">Aguardando Scanner...</div>
 
-    <div id="statusArea" id="statusBox">
-      <p id="fala">Aguardando voz...</p>
-      <div id="lista"></div>
-      <div id="contador"></div>
-    </div>
+  <div id="liveArea" style="display:none">
+    <div id="fala-preview">"Aguardando sua voz..."</div>
+    <div id="resultsList"></div>
+    <div id="countdown"></div>
   </div>
+</div>
 
 <script>
-var dicionario = {
-    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado", "vidro"],
-    "RISCOS NA TELA": ["risco", "riscada", "arranhado", "arranhão", "marcado"],
-    "FUGA DE LUZ": ["luz", "vazamento", "brilho", "fuga", "borda"],
-    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "afundado", "botões"],
-    "FALTA DE RELEVO": ["liso", "relevo", "apagado", "serigrafia", "lisa"]
+// --- DICIONÁRIO DE SINÔNIMOS V10 ---
+const dicionario = {
+    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado", "vidro", "quebrada", "estourado"],
+    "RISCOS NA TELA": ["risco", "riscada", "arranhado", "arranhão", "ralado", "marcado", "riscos"],
+    "FUGA DE LUZ": ["luz", "vazamento", "brilho", "fuga", "borda", "mancha"],
+    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "afundado", "botões", "teclas", "solto"],
+    "FALTA DE RELEVO": ["liso", "relevo", "apagado", "serigrafia", "lisa", "desgastado"]
 };
 
-var comandosParar = ["finalizar", "concluir", "feito", "pronto", "ok", "encerrar", "parar"];
-var recognition;
-var ouvindoAtivo = false;
+const comandosParar = ["finalizar", "pronto", "concluir", "feito", "ok", "parar", "confirmar", "terminar"];
 
-function iniciar() {
-    var serialInput = document.getElementById("serial");
-    if(!serialInput.value.trim()) { alert("Por favor, digite o Serial primeiro."); return; }
+let recognition;
+let isListening = false;
 
-    ouvindoAtivo = true;
-    document.getElementById("btnMain").style.display = "none";
-    document.getElementById("btnStop").style.display = "block";
-    document.getElementById("statusArea").style.display = "block";
-    document.getElementById("lista").innerHTML = "";
-    document.getElementById("fala").innerText = "Ouvindo...";
+// Foco automático no input ao carregar
+window.onload = () => document.getElementById('serialInput').focus();
 
-    var Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(!Speech) { alert("Este dispositivo não suporta reconhecimento de voz."); return; }
+// Detecta o BIPE do Scanner (Enter)
+document.getElementById('serialInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && e.target.value.trim() !== "") {
+        startVistoria();
+    }
+});
 
+function startVistoria() {
+    if(isListening) return;
+    isListening = true;
+
+    // UI Updates
+    document.getElementById('mainCard').classList.add('active');
+    const badge = document.getElementById('badge');
+    badge.innerText = "🛑 OUVINDO AGORA...";
+    badge.className = "status-badge listening";
+    document.getElementById('liveArea').style.display = "block";
+    document.getElementById('serialInput').readOnly = true;
+
+    // Speech Setup
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new Speech();
     recognition.lang = "pt-BR";
     recognition.continuous = true;
     recognition.interimResults = true;
 
-    recognition.onresult = function(e) {
-        if(!ouvindoAtivo) return;
-        var total = "";
-        for (var i = 0; i < e.results.length; i++) {
-            total += e.results[i][0].transcript;
+    recognition.onresult = (event) => {
+        let currentTranscript = "";
+        for (let i = 0; i < event.results.length; i++) {
+            currentTranscript += event.results[i][0].transcript;
         }
-        total = total.toLowerCase();
-        document.getElementById("fala").innerText = total;
+        
+        const cleanText = currentTranscript.toLowerCase();
+        document.getElementById('fala-preview').innerText = `"${cleanText}"`;
 
-        for (var j = 0; j < comandosParar.length; j++) {
-            if (total.indexOf(comandosParar[j]) !== -1) {
-                finalizarCiclo();
-                break;
-            }
+        // Verifica Gatilhos de Parada
+        if (comandosParar.some(cmd => cleanText.includes(cmd))) {
+            finishVistoria(cleanText);
         }
     };
 
-    recognition.onerror = function(err) { console.log("Erro voz:", err); };
     recognition.start();
 }
 
-function finalizarCiclo() {
-    if(!ouvindoAtivo) return;
-    ouvindoAtivo = false;
-    if(recognition) { try { recognition.stop(); } catch(err){} }
+function finishVistoria(finalText) {
+    isListening = false;
+    if(recognition) {
+        recognition.onresult = null;
+        recognition.stop();
+    }
 
-    document.getElementById("btnStop").style.display = "none";
-    var falaTexto = document.getElementById("fala").innerText.toLowerCase();
-    var errosEncontrados = [];
+    const badge = document.getElementById('badge');
+    badge.innerText = "VISTORIA FINALIZADA";
+    badge.className = "status-badge waiting";
 
-    for (var erro in dicionario) {
-        var palavrasChave = dicionario[erro];
-        for (var k = 0; k < palavrasChave.length; k++) {
-            if (falaTexto.indexOf(palavrasChave[k]) !== -1) {
-                errosEncontrados.push(erro);
-                break;
-            }
+    const encontrados = [];
+    for (const [erro, palavras] of Object.entries(dicionario)) {
+        if (palavras.some(p => finalText.includes(p))) {
+            encontrados.push(erro);
         }
     }
 
-    var ui = document.getElementById("lista");
-    if(errosEncontrados.length === 0) {
-        ui.innerHTML = "<p class='ok-msg'>✓ EQUIPAMENTO OK</p>";
+    const listDiv = document.getElementById('resultsList');
+    if(encontrados.length === 0) {
+        listDiv.innerHTML = "<div class='ok-card'>✓ EQUIPAMENTO EM PERFEITO ESTADO</div>";
     } else {
-        for (var m = 0; m < errosEncontrados.length; m++) {
-            ui.innerHTML += '<div class="erro-item">❌ ' + errosEncontrados[m] + '</div>';
-        }
+        encontrados.forEach(err => {
+            listDiv.innerHTML += `<div class="erro-card">❌ ${err}</div>`;
+        });
     }
 
-    // Contador para Reiniciar
-    var seg = 5;
-    var timer = setInterval(function() {
-        document.getElementById("contador").innerText = seg--;
-        if(seg < 0) { clearInterval(timer); location.reload(); }
+    // Reset Sequence
+    let count = 5;
+    const timer = setInterval(() => {
+        document.getElementById('countdown').innerText = count--;
+        if(count < 0) {
+            clearInterval(timer);
+            location.reload();
+        }
     }, 1000);
 }
 </script>
