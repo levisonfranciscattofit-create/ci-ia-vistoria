@@ -3,81 +3,66 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo V9.6</title>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  
+  <title>Cielo V9.7 POC</title>
   <style>
-    body { background-color: #020617; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .card { background-color: #0f172a; border: 2px solid #0ea5e9; border-radius: 20px; width: 320px; padding: 30px; text-align: center; }
-    input { width: 100%; background: black; border: 1px solid #334155; border-radius: 10px; padding: 15px; color: #38bdf8; text-align: center; font-size: 20px; margin-bottom: 20px; box-sizing: border-box; }
-    button { width: 100%; padding: 20px; border-radius: 15px; border: none; color: white; font-weight: bold; font-size: 18px; cursor: pointer; text-transform: uppercase; }
-    .btn-blue { background-color: #0284c7; }
+    body { background-color: #020617; color: white; font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .card { background-color: #0f172a; border: 3px solid #0ea5e9; border-radius: 25px; width: 340px; padding: 40px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+    input { width: 100%; background: #000; border: 2px solid #334155; border-radius: 12px; padding: 15px; color: #38bdf8; text-align: center; font-size: 24px; margin-bottom: 25px; box-sizing: border-box; outline: none; }
+    button { width: 100%; padding: 25px; border-radius: 20px; border: none; color: white; font-weight: bold; font-size: 20px; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+    .btn-blue { background-color: #0284c7; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4); }
     .btn-red { background-color: #dc2626; display: none; }
-    #statusArea { margin-top: 20px; border-top: 1px solid #1e293b; padding-top: 20px; text-align: left; }
-    .erro-item { background: rgba(220, 38, 38, 0.2); border-left: 4px solid #dc2626; padding: 10px; margin-bottom: 5px; font-size: 12px; font-weight: bold; }
-    #fala { color: #facc15; font-style: italic; text-align: center; margin-bottom: 15px; }
-    #contador { font-size: 60px; font-weight: 900; text-align: center; margin-top: 10px; }
-    img { height: 20px; margin-bottom: 30px; }
+    #statusArea { margin-top: 25px; border-top: 2px solid #1e293b; padding-top: 20px; display: none; }
+    #fala { color: #facc15; font-style: italic; font-size: 18px; margin-bottom: 20px; min-height: 40px; }
+    .erro-item { background: rgba(220, 38, 38, 0.2); border-left: 5px solid #dc2626; padding: 15px; margin-bottom: 10px; font-size: 14px; font-weight: bold; text-align: left; }
+    .ok-msg { color: #4ade80; font-size: 22px; font-weight: bold; margin-top: 10px; }
+    #contador { font-size: 80px; font-weight: 900; margin-top: 20px; color: #fff; }
+    .logo { font-size: 28px; font-weight: bold; color: #fff; margin-bottom: 30px; letter-spacing: -1px; }
+    .logo span { color: #0ea5e9; }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <img src="https://logodownload.org/wp-content/uploads/2014/07/cielo-logo-1.png" alt="Cielo">
+    <div class="logo">CIELO <span>IA</span></div>
     
-    <input id="serial" type="text" placeholder="SERIAL">
+    <input id="serial" type="text" placeholder="SERIAL" autocomplete="off">
     
-    <button id="btnMain" class="btn-blue" onclick="iniciar()">🎙️ Iniciar Voz</button>
-    <button id="btnStop" class="btn-red" onclick="finalizarCiclo()">🛑 Finalizar</button>
+    <button id="btnMain" class="btn-blue" onclick="iniciar()">🎙️ INICIAR VISTORIA</button>
+    <button id="btnStop" class="btn-red" onclick="finalizarCiclo()">🛑 FINALIZAR AGORA</button>
 
-    <div id="statusArea" style="display:none;">
-      <p id="fala">Ouvindo...</p>
+    <div id="statusArea" id="statusBox">
+      <p id="fala">Aguardando voz...</p>
       <div id="lista"></div>
       <div id="contador"></div>
     </div>
   </div>
 
 <script>
-var firebaseConfig = {
-  apiKey: "AIzaSyDOCUw3ZQlLUglizIUP1Ive6PA9ee_-5nI",
-  authDomain: "poc-realwear.firebaseapp.com",
-  databaseURL: "https://poc-realwear-default-rtdb.firebaseio.com",
-  projectId: "poc-realwear"
-};
-
-// Inicializa Firebase apenas se a biblioteca carregar
-if (typeof firebase !== 'undefined') {
-    firebase.initializeApp(firebaseConfig);
-    var db = firebase.database();
-} else {
-    alert("Erro: Biblioteca Firebase não carregou. Verifique a internet.");
-}
-
 var dicionario = {
-    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado"],
-    "RISCOS NA TELA": ["risco", "riscada", "arranhado", "arranhão"],
-    "FUGA DE LUZ": ["luz", "vazamento", "brilho", "fuga"],
-    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "botões"],
-    "FALTA DE RELEVO": ["liso", "relevo", "apagado", "lisa"]
+    "DISPLAY QUEBRADO": ["tela", "display", "visor", "quebrado", "trincado", "rachado", "vidro"],
+    "RISCOS NA TELA": ["risco", "riscada", "arranhado", "arranhão", "marcado"],
+    "FUGA DE LUZ": ["luz", "vazamento", "brilho", "fuga", "borda"],
+    "TECLAS DANIFICADAS": ["tecla", "botão", "teclado", "travado", "afundado", "botões"],
+    "FALTA DE RELEVO": ["liso", "relevo", "apagado", "serigrafia", "lisa"]
 };
 
-var comandosParar = ["finalizar", "concluir", "feito", "pronto", "ok"];
+var comandosParar = ["finalizar", "concluir", "feito", "pronto", "ok", "encerrar", "parar"];
 var recognition;
 var ouvindoAtivo = false;
 
 function iniciar() {
-    var serial = document.getElementById("serial").value.trim();
-    if(!serial) { alert("Digite o Serial!"); return; }
+    var serialInput = document.getElementById("serial");
+    if(!serialInput.value.trim()) { alert("Por favor, digite o Serial primeiro."); return; }
 
     ouvindoAtivo = true;
     document.getElementById("btnMain").style.display = "none";
     document.getElementById("btnStop").style.display = "block";
     document.getElementById("statusArea").style.display = "block";
     document.getElementById("lista").innerHTML = "";
+    document.getElementById("fala").innerText = "Ouvindo...";
 
     var Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(!Speech) { alert("Voz não suportada neste óculos."); return; }
+    if(!Speech) { alert("Este dispositivo não suporta reconhecimento de voz."); return; }
 
     recognition = new Speech();
     recognition.lang = "pt-BR";
@@ -100,6 +85,8 @@ function iniciar() {
             }
         }
     };
+
+    recognition.onerror = function(err) { console.log("Erro voz:", err); };
     recognition.start();
 }
 
@@ -109,13 +96,13 @@ function finalizarCiclo() {
     if(recognition) { try { recognition.stop(); } catch(err){} }
 
     document.getElementById("btnStop").style.display = "none";
-    var falaTecnico = document.getElementById("fala").innerText.toLowerCase();
+    var falaTexto = document.getElementById("fala").innerText.toLowerCase();
     var errosEncontrados = [];
 
     for (var erro in dicionario) {
-        var palavras = dicionario[erro];
-        for (var k = 0; k < palavras.length; k++) {
-            if (falaTecnico.indexOf(palavras[k]) !== -1) {
+        var palavrasChave = dicionario[erro];
+        for (var k = 0; k < palavrasChave.length; k++) {
+            if (falaTexto.indexOf(palavrasChave[k]) !== -1) {
                 errosEncontrados.push(erro);
                 break;
             }
@@ -124,26 +111,18 @@ function finalizarCiclo() {
 
     var ui = document.getElementById("lista");
     if(errosEncontrados.length === 0) {
-        ui.innerHTML = "<p style='color:#4ade80; text-align:center;'>✓ EQUIPAMENTO OK</p>";
+        ui.innerHTML = "<p class='ok-msg'>✓ EQUIPAMENTO OK</p>";
     } else {
-        errosEncontrados.forEach(function(e) {
-            ui.innerHTML += '<div class="erro-item">❌ ' + e + '</div>';
-        });
+        for (var m = 0; m < errosEncontrados.length; m++) {
+            ui.innerHTML += '<div class="erro-item">❌ ' + errosEncontrados[m] + '</div>';
+        }
     }
 
-    if(typeof db !== 'undefined') {
-        db.ref("inspecao").push({
-            serial: document.getElementById("serial").value.toUpperCase(),
-            defeitos: errosEncontrados,
-            transcricao: falaTecnico,
-            data: new Date().toLocaleString()
-        });
-    }
-
-    var c = 5;
-    var t = setInterval(function() {
-        document.getElementById("contador").innerText = c--;
-        if(c < 0) { clearInterval(t); location.reload(); }
+    // Contador para Reiniciar
+    var seg = 5;
+    var timer = setInterval(function() {
+        document.getElementById("contador").innerText = seg--;
+        if(seg < 0) { clearInterval(timer); location.reload(); }
     }, 1000);
 }
 </script>
