@@ -2,40 +2,162 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Cielo Vistoria | V21 Final</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <title>Cielo Vistoria | V22 Mobile</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  
   <style>
     :root { --cielo: #00aeef; --danger: #ff4b5c; --bg: #010a12; }
-    body { background: radial-gradient(circle, #003d66 0%, var(--bg) 100%); color: white; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: 40px; width: 90%; max-width: 450px; padding: 30px; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
-    .logo { font-family: 'Orbitron'; color: var(--cielo); font-size: 20px; margin-bottom: 20px; letter-spacing: 2px; }
-    .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
-    input { flex: 1; background: #000; border: 2px solid var(--cielo); border-radius: 12px; padding: 15px; color: #fff; text-align: center; font-size: 20px; font-family: 'Orbitron'; outline: none; }
-    .btn-camera { background: var(--cielo); border: none; border-radius: 12px; width: 60px; cursor: pointer; font-size: 24px; color: white; }
-    #reader { width: 100%; border-radius: 15px; overflow: hidden; margin-bottom: 20px; display: none; border: 2px solid var(--cielo); }
-    #fala-preview { min-height: 80px; font-size: 18px; color: #facc15; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.3); text-align: left; }
-    .mic-icon { width: 50px; height: 50px; background: var(--danger); border-radius: 50%; margin: 0 auto 15px; display: none; animation: pulse 1s infinite; align-items: center; justify-content: center; }
-    .erro-box { background: rgba(255, 75, 92, 0.2); border-left: 5px solid var(--danger); padding: 10px; margin-top: 8px; text-align: left; font-size: 16px; font-weight: bold; border-radius: 8px; }
-    #timer { font-size: 60px; font-weight: 900; color: var(--cielo); margin-top: 15px; }
-    @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 75, 92, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 75, 92, 0); } 100% { transform: scale(1); } }
+    
+    * { box-sizing: border-box; } /* Garante que o padding não quebre a largura */
+
+    body { 
+        background: radial-gradient(circle, #003d66 0%, var(--bg) 100%); 
+        color: white; 
+        font-family: 'Rajdhani', sans-serif; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        min-height: 100vh; 
+        margin: 0; 
+        padding: 15px; /* Respiro nas bordas do celular */
+    }
+
+    .glass { 
+        background: rgba(255, 255, 255, 0.05); 
+        backdrop-filter: blur(15px); 
+        border: 1px solid rgba(0, 174, 239, 0.3); 
+        border-radius: 30px; 
+        width: 100%; 
+        max-width: 400px; /* Largura ideal para celular */
+        padding: 25px; 
+        text-align: center; 
+        box-shadow: 0 0 50px rgba(0,0,0,0.5); 
+    }
+
+    .logo { font-family: 'Orbitron'; color: var(--cielo); font-size: 18px; margin-bottom: 20px; letter-spacing: 1px; }
+
+    .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+    
+    input { 
+        flex: 1; 
+        background: #000; 
+        border: 2px solid var(--cielo); 
+        border-radius: 12px; 
+        padding: 15px; 
+        color: #fff; 
+        text-align: center; 
+        font-size: 20px; /* Fonte maior para leitura fácil */
+        font-family: 'Orbitron'; 
+        outline: none;
+        width: 100%;
+    }
+
+    .btn-camera { 
+        background: var(--cielo); 
+        border: none; 
+        border-radius: 12px; 
+        width: 65px; 
+        height: 60px; /* Botão quadrado fácil de clicar */
+        cursor: pointer; 
+        font-size: 28px; 
+        color: white; 
+    }
+
+    #reader { 
+        width: 100%; 
+        border-radius: 15px; 
+        overflow: hidden; 
+        margin-bottom: 15px; 
+        display: none; 
+        border: 2px solid var(--cielo); 
+    }
+
+    #fala-preview { 
+        min-height: 100px; 
+        font-size: 19px; 
+        color: #facc15; 
+        margin-bottom: 15px; 
+        border: 1px solid rgba(255,255,255,0.1); 
+        border-radius: 15px; 
+        padding: 15px; 
+        background: rgba(0,0,0,0.3); 
+        text-align: left;
+        line-height: 1.4;
+    }
+
+    .mic-icon { 
+        width: 60px; 
+        height: 60px; 
+        background: var(--danger); 
+        border-radius: 50%; 
+        margin: 0 auto 15px; 
+        display: none; 
+        animation: pulse 1s infinite; 
+        align-items: center; 
+        justify-content: center;
+        font-size: 24px;
+    }
+
+    .erro-box { 
+        background: rgba(255, 75, 92, 0.2); 
+        border-left: 5px solid var(--danger); 
+        padding: 12px; 
+        margin-top: 8px; 
+        text-align: left; 
+        font-size: 17px; 
+        font-weight: bold; 
+        border-radius: 8px; 
+    }
+
+    #timer { font-size: 70px; font-weight: 900; color: var(--cielo); margin-top: 10px; }
+
+    /* Botão de Finalizar Gigante para o polegar */
+    #btnManual { 
+        width: 100%; 
+        padding: 20px; 
+        border-radius: 15px; 
+        background: var(--cielo); 
+        color: white; 
+        font-weight: bold; 
+        font-size: 18px;
+        display: none; 
+        border: none; 
+        cursor: pointer; 
+        text-transform: uppercase;
+    }
+
+    @keyframes pulse { 
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 75, 92, 0.7); } 
+        70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(255, 75, 92, 0); } 
+        100% { transform: scale(1); } 
+    }
   </style>
 </head>
 <body>
 
 <div class="glass">
-  <div class="logo">CIELO VISTORIA <span>V21</span></div>
+  <div class="logo">CIELO VISTORIA <span>V22</span></div>
+  
   <div class="input-group">
-    <input id="serialInput" type="text" placeholder="BIPE OU DIGITE" autocomplete="off">
+    <input id="serialInput" type="text" placeholder="SERIAL" autocomplete="off">
     <button class="btn-camera" onclick="abrirCamera()">📷</button>
   </div>
+
   <div id="reader"></div>
+  
   <div id="micIcon" class="mic-icon">🎤</div>
+  
   <div id="fala-preview">Aguardando início...</div>
+  
   <div id="listaErros"></div>
-  <button id="btnManual" style="width:100%; padding:15px; border-radius:12px; background:var(--cielo); color:white; font-weight:bold; display:none; border:none; cursor:pointer;" onclick="forçarFinalizar()">FINALIZAR AGORA</button>
+  
+  <button id="btnManual" onclick="forçarFinalizar()">FINALIZAR AGORA</button>
+  
   <div id="timer"></div>
 </div>
 
@@ -61,12 +183,11 @@ let recognition;
 let gravando = false;
 let textoAcumulado = "";
 
-// --- CÂMERA ---
 function abrirCamera() {
     const readerDiv = document.getElementById('reader');
     readerDiv.style.display = 'block';
     html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
+    html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: {width: 250, height: 150} },
         (decodedText) => {
             document.getElementById('serialInput').value = decodedText;
             html5QrCode.stop().then(() => { readerDiv.style.display = 'none'; });
@@ -75,12 +196,10 @@ function abrirCamera() {
     ).catch(err => console.error(err));
 }
 
-// Escuta manual do input para quem não tem câmera
 document.getElementById('serialInput').addEventListener('change', function() {
     if(this.value.length > 2) startMic();
 });
 
-// --- VOZ ---
 function startMic() {
     if(gravando) return;
     gravando = true;
@@ -101,11 +220,9 @@ function startMic() {
             if (event.results[i].isFinal) textoAcumulado += event.results[i][0].transcript + " ";
             else interimText += event.results[i][0].transcript;
         }
-        
         const totalLive = (textoAcumulado + interimText).toLowerCase();
         document.getElementById('fala-preview').innerText = totalLive;
 
-        // COMANDO DE VOZ PARA FINALIZAR
         if (totalLive.includes("pronto") || totalLive.includes("finalizar") || totalLive.includes("ok")) {
             forçarFinalizar();
         }
@@ -141,7 +258,6 @@ function forçarFinalizar() {
         data: new Date().toLocaleString()
     });
 
-    // --- TIMER DE VOLTA ---
     let c = 5;
     const t = setInterval(() => {
         document.getElementById('timer').innerText = c--;
