@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo | HMT-1 V26</title>
+  <title>Cielo | HMT-1 V27</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
@@ -11,26 +11,46 @@
     :root { --cielo: #00aeef; --danger: #ff4b5c; --bg: #000; }
     body { background: #000; color: white; font-family: 'Rajdhani', sans-serif; text-align: center; padding: 20px; }
     .logo { font-family: 'Orbitron'; color: var(--cielo); margin-bottom: 20px; font-size: 22px; }
-    input { width: 100%; background: #111; border: 3px solid var(--cielo); border-radius: 10px; padding: 20px; color: #fff; text-align: center; font-size: 28px; font-family: 'Orbitron'; margin-bottom: 20px; }
-    .btn-scan { width: 100%; padding: 25px; background: var(--cielo); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 22px; margin-bottom: 20px; }
-    #fala-preview { min-height: 100px; font-size: 22px; color: #facc15; border: 1px dotted #444; border-radius: 10px; padding: 15px; background: #0a0a0a; margin-bottom: 20px; }
-    .mic-icon { width: 60px; height: 60px; background: var(--danger); border-radius: 50%; margin: 0 auto 20px; display: none; align-items: center; justify-content: center; animation: pulse 1s infinite; }
+    
+    /* Input otimizado para não chamar teclado */
+    input { 
+        width: 100%; background: #111; border: 3px solid var(--cielo); 
+        border-radius: 10px; padding: 20px; color: #fff; text-align: center; 
+        font-size: 28px; font-family: 'Orbitron'; margin-bottom: 20px; 
+    }
+
+    .btn-scan { 
+        width: 100%; padding: 25px; background: var(--cielo); 
+        color: white; border: none; border-radius: 12px; 
+        font-weight: bold; font-size: 22px; margin-bottom: 20px; 
+    }
+
+    #fala-preview { 
+        min-height: 100px; font-size: 22px; color: #facc15; 
+        border: 1px dotted #444; border-radius: 10px; padding: 15px; 
+        background: #0a0a0a; margin-bottom: 20px; 
+    }
+
+    .mic-icon { 
+        width: 60px; height: 60px; background: var(--danger); 
+        border-radius: 50%; margin: 0 auto 20px; display: none; 
+        align-items: center; justify-content: center; animation: pulse 1s infinite; 
+    }
     @keyframes pulse { 0% { transform: scale(1); } 70% { transform: scale(1.1); } 100% { transform: scale(1); } }
   </style>
 </head>
 <body>
 
-  <div class="logo">POC CIELO V26</div>
+  <div class="logo">POC CIELO V27</div>
 
   <button class="btn-scan" id="btnScan">ESCANEAR CÓDIGO</button>
 
-  <input id="serialInput" type="text" placeholder="Aguardando Serial...">
-
-  <div id="micIcon" class="mic-icon">🎤</div>
+  <input id="serialInput" type="text" placeholder="Aguardando..." 
+         data-wfh-type="barcode" 
+         inputmode="none"> <div id="micIcon" class="mic-icon">🎤</div>
   <div id="fala-preview">Diga "ESCANEAR CÓDIGO"</div>
 
 <script>
-// --- CONFIG FIREBASE (Sua configuração atual) ---
 const firebaseConfig = {
   apiKey: "AIzaSyDOCUw3ZQlLUglizIUP1Ive6PA9ee_-5nI",
   authDomain: "poc-realwear.firebaseapp.com",
@@ -40,43 +60,34 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-const dicionario = {
-    "TELA QUEBRADA": ["tela", "quebrad", "trinc", "visor"],
-    "TECLADO RUIM": ["tecla", "botão", "teclad"],
-    "FALTA DE RELEVO": ["relevo", "liso", "apagad"]
-};
-
-let recognition;
-let gravando = false;
 const serialInput = document.getElementById('serialInput');
 
-// --- ACIONAMENTO DO SCANNER ---
+// Função para iniciar o scanner nativo do HMT-1 via comando de voz
 document.getElementById('btnScan').addEventListener('click', () => {
     serialInput.focus();
-    // No HMT-1, dar o foco e o clique simulado dispara o WearHF Barcode
-    serialInput.click();
+    // No HMT-1, a mira do scanner geralmente abre com o botão físico lateral
+    // ou se o campo for reconhecido como barcode.
 });
 
-// --- DETECTAR ENTRADA E ABRIR MIC ---
+// Monitora a entrada do scanner
 serialInput.addEventListener('input', () => {
     if(serialInput.value.length > 2) {
-        console.log("Serial detectado: " + serialInput.value);
-        // Pequeno delay para garantir que o scanner fechou
+        // Esconde o teclado caso ele tenha aparecido
+        serialInput.blur(); 
         setTimeout(startMic, 800);
     }
 });
 
 function startMic() {
-    if(gravando) return;
-    gravando = true;
-    document.getElementById('micIcon').style.display = "flex";
-    document.getElementById('fala-preview').innerText = "Ouvindo defeitos...";
-
+    // ... (mesmo código da V26 para o microfone)
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new Speech();
     recognition.lang = "pt-BR";
     recognition.continuous = true;
     recognition.interimResults = true;
+    
+    document.getElementById('micIcon').style.display = "flex";
+    document.getElementById('fala-preview').innerText = "Ouvindo defeitos...";
 
     recognition.onresult = (event) => {
         let texto = "";
@@ -84,7 +95,6 @@ function startMic() {
             texto += event.results[i][0].transcript;
         }
         document.getElementById('fala-preview').innerText = texto.toLowerCase();
-
         if (texto.toLowerCase().includes("finalizar") || texto.toLowerCase().includes("pronto")) {
             enviarDados();
         }
@@ -93,23 +103,12 @@ function startMic() {
 }
 
 function enviarDados() {
-    if(!gravando) return;
-    gravando = false;
-    if(recognition) recognition.stop();
-
     const finalStr = document.getElementById('fala-preview').innerText.toLowerCase();
-    const encontrados = [];
-    Object.keys(dicionario).forEach(erro => {
-        if (dicionario[erro].some(p => finalStr.includes(p))) encontrados.push(erro);
-    });
-
     db.ref("inspecao").push({
         serial: serialInput.value,
-        defeitos: encontrados,
         transcricao: finalStr,
         data: new Date().toLocaleString()
     });
-
     document.getElementById('fala-preview').innerText = "✅ ENVIADO!";
     setTimeout(() => { location.reload(); }, 2000);
 }
