@@ -2,48 +2,41 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Cielo Vistoria | V20 Câmera</title>
+  <title>Cielo Vistoria | V21 Final</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
-  
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root { --cielo: #00aeef; --danger: #ff4b5c; --bg: #010a12; }
     body { background: radial-gradient(circle, #003d66 0%, var(--bg) 100%); color: white; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: 40px; width: 90%; max-width: 450px; padding: 30px; text-align: center; }
-    .logo { font-family: 'Orbitron'; color: var(--cielo); font-size: 20px; margin-bottom: 20px; }
-    
+    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: 40px; width: 90%; max-width: 450px; padding: 30px; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+    .logo { font-family: 'Orbitron'; color: var(--cielo); font-size: 20px; margin-bottom: 20px; letter-spacing: 2px; }
     .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
     input { flex: 1; background: #000; border: 2px solid var(--cielo); border-radius: 12px; padding: 15px; color: #fff; text-align: center; font-size: 20px; font-family: 'Orbitron'; outline: none; }
-    .btn-camera { background: var(--cielo); border: none; border-radius: 12px; width: 60px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; }
-    
+    .btn-camera { background: var(--cielo); border: none; border-radius: 12px; width: 60px; cursor: pointer; font-size: 24px; color: white; }
     #reader { width: 100%; border-radius: 15px; overflow: hidden; margin-bottom: 20px; display: none; border: 2px solid var(--cielo); }
-    
-    #fala-preview { min-height: 80px; font-size: 18px; color: #facc15; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.3); }
+    #fala-preview { min-height: 80px; font-size: 18px; color: #facc15; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.3); text-align: left; }
     .mic-icon { width: 50px; height: 50px; background: var(--danger); border-radius: 50%; margin: 0 auto 15px; display: none; animation: pulse 1s infinite; align-items: center; justify-content: center; }
     .erro-box { background: rgba(255, 75, 92, 0.2); border-left: 5px solid var(--danger); padding: 10px; margin-top: 8px; text-align: left; font-size: 16px; font-weight: bold; border-radius: 8px; }
-    
+    #timer { font-size: 60px; font-weight: 900; color: var(--cielo); margin-top: 15px; }
     @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 75, 92, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 75, 92, 0); } 100% { transform: scale(1); } }
   </style>
 </head>
 <body>
 
 <div class="glass">
-  <div class="logo">CIELO VISTORIA V20</div>
-  
+  <div class="logo">CIELO VISTORIA <span>V21</span></div>
   <div class="input-group">
-    <input id="serialInput" type="text" placeholder="SERIAL" autocomplete="off">
+    <input id="serialInput" type="text" placeholder="BIPE OU DIGITE" autocomplete="off">
     <button class="btn-camera" onclick="abrirCamera()">📷</button>
   </div>
-
   <div id="reader"></div>
-  
   <div id="micIcon" class="mic-icon">🎤</div>
-  <div id="fala-preview">Aguardando serial...</div>
+  <div id="fala-preview">Aguardando início...</div>
   <div id="listaErros"></div>
-  
-  <button id="btnManual" style="width:100%; padding:15px; border-radius:12px; background:var(--cielo); color:white; font-weight:bold; display:none; border:none; margin-top:10px;" onclick="forçarFinalizar()">FINALIZAR</button>
+  <button id="btnManual" style="width:100%; padding:15px; border-radius:12px; background:var(--cielo); color:white; font-weight:bold; display:none; border:none; cursor:pointer;" onclick="forçarFinalizar()">FINALIZAR AGORA</button>
+  <div id="timer"></div>
 </div>
 
 <script>
@@ -58,50 +51,43 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 const dicionario = {
-    "TELA QUEBRADA": ["tela", "quebrad", "trinc", "visor"],
-    "TECLADO RUIM": ["tecla", "botão", "teclad"],
+    "TELA QUEBRADA": ["tela", "quebrad", "trinc", "visor", "vidro"],
+    "TECLADO RUIM": ["tecla", "botão", "botao", "teclad"],
     "FALTA DE RELEVO": ["relevo", "liso", "apagad"]
 };
 
 let html5QrCode;
 let recognition;
 let gravando = false;
+let textoAcumulado = "";
 
-// --- FUNÇÃO CÂMERA ---
+// --- CÂMERA ---
 function abrirCamera() {
     const readerDiv = document.getElementById('reader');
     readerDiv.style.display = 'block';
-    
     html5QrCode = new Html5Qrcode("reader");
-    const config = { fps: 10, qrbox: { width: 250, height: 150 } };
-
-    html5QrCode.start(
-        { facingMode: "environment" }, 
-        config,
+    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
         (decodedText) => {
             document.getElementById('serialInput').value = decodedText;
-            pararCamera();
-            startMic(); // Já liga o microfone após ler o código!
+            html5QrCode.stop().then(() => { readerDiv.style.display = 'none'; });
+            startMic();
         }
-    ).catch(err => alert("Erro ao abrir câmera: " + err));
+    ).catch(err => console.error(err));
 }
 
-function pararCamera() {
-    if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-            document.getElementById('reader').style.display = 'none';
-        });
-    }
-}
+// Escuta manual do input para quem não tem câmera
+document.getElementById('serialInput').addEventListener('change', function() {
+    if(this.value.length > 2) startMic();
+});
 
-// --- FUNÇÃO VOZ ---
+// --- VOZ ---
 function startMic() {
     if(gravando) return;
     gravando = true;
-    
+    textoAcumulado = "";
     document.getElementById('micIcon').style.display = "flex";
     document.getElementById('btnManual').style.display = "block";
-    document.getElementById('fala-preview').innerText = "Diga os defeitos...";
+    document.getElementById('fala-preview').innerText = "Ouvindo defeitos...";
 
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new Speech();
@@ -110,36 +96,57 @@ function startMic() {
     recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-        let textoFinal = "";
-        for (let i = 0; i < event.results.length; i++) {
-            textoFinal += event.results[i][0].transcript + " ";
+        let interimText = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) textoAcumulado += event.results[i][0].transcript + " ";
+            else interimText += event.results[i][0].transcript;
         }
-        document.getElementById('fala-preview').innerText = textoFinal.toLowerCase();
-    };
+        
+        const totalLive = (textoAcumulado + interimText).toLowerCase();
+        document.getElementById('fala-preview').innerText = totalLive;
 
+        // COMANDO DE VOZ PARA FINALIZAR
+        if (totalLive.includes("pronto") || totalLive.includes("finalizar") || totalLive.includes("ok")) {
+            forçarFinalizar();
+        }
+    };
     recognition.start();
 }
 
 function forçarFinalizar() {
     if(!gravando) return;
     gravando = false;
-    const texto = document.getElementById('fala-preview').innerText.toLowerCase();
+    const finalStr = document.getElementById('fala-preview').innerText.toLowerCase();
     if(recognition) recognition.stop();
+
+    document.getElementById('micIcon').style.display = "none";
+    document.getElementById('btnManual').style.display = "none";
 
     const encontrados = [];
     Object.keys(dicionario).forEach(erro => {
-        if (dicionario[erro].some(p => texto.includes(p))) encontrados.push(erro);
+        if (dicionario[erro].some(p => finalStr.includes(p))) encontrados.push(erro);
     });
+
+    const list = document.getElementById('listaErros');
+    if(encontrados.length === 0) {
+        list.innerHTML = "<h3 style='color:var(--cielo)'>✓ EQUIPAMENTO OK</h3>";
+    } else {
+        encontrados.forEach(e => { list.innerHTML += `<div class="erro-box">❌ ${e}</div>`; });
+    }
 
     db.ref("inspecao").push({
         serial: document.getElementById('serialInput').value,
         defeitos: encontrados,
-        transcricao: texto,
+        transcricao: finalStr,
         data: new Date().toLocaleString()
     });
 
-    alert("Vistoria salva com sucesso!");
-    location.reload();
+    // --- TIMER DE VOLTA ---
+    let c = 5;
+    const t = setInterval(() => {
+        document.getElementById('timer').innerText = c--;
+        if(c < 0) { clearInterval(t); location.reload(); }
+    }, 1000);
 }
 </script>
 </body>
