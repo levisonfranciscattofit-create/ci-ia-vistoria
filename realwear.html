@@ -3,60 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cielo | HMT-1 Ultra Fast</title>
+  <title>Cielo | HMT-1 V26</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-  
   <style>
     :root { --cielo: #00aeef; --danger: #ff4b5c; --bg: #000; }
-    body { background: var(--bg); color: white; font-family: 'Rajdhani', sans-serif; margin: 0; padding: 10px; text-align: center; }
-    .logo { font-family: 'Orbitron'; color: var(--cielo); margin: 15px 0; font-size: 20px; }
-    
-    /* Input estilizado para o RealWear */
-    #serialInput { 
-        width: 100%; background: #111; border: 3px solid var(--cielo); 
-        border-radius: 10px; padding: 15px; color: #fff; text-align: center; 
-        font-size: 24px; font-family: 'Orbitron'; margin-bottom: 15px; 
-    }
-
-    /* Botão que o RealWear vai "enxergar" como comando de voz */
-    .btn-scan {
-        width: 100%; padding: 20px; background: var(--cielo);
-        color: white; border: none; border-radius: 10px;
-        font-weight: bold; font-size: 20px; margin-bottom: 15px;
-        cursor: pointer;
-    }
-
-    #fala-preview { 
-        min-height: 100px; font-size: 20px; color: #facc15; 
-        border: 1px solid #333; border-radius: 10px; padding: 15px; 
-        background: #0a0a0a; margin-bottom: 15px; text-align: left;
-    }
-
-    .mic-icon { 
-        width: 60px; height: 60px; background: var(--danger); 
-        border-radius: 50%; margin: 0 auto 15px; display: none; 
-        animation: pulse 1s infinite; align-items: center; justify-content: center; 
-    }
-    
-    #timer { font-size: 60px; color: var(--cielo); font-family: 'Orbitron'; }
+    body { background: #000; color: white; font-family: 'Rajdhani', sans-serif; text-align: center; padding: 20px; }
+    .logo { font-family: 'Orbitron'; color: var(--cielo); margin-bottom: 20px; font-size: 22px; }
+    input { width: 100%; background: #111; border: 3px solid var(--cielo); border-radius: 10px; padding: 20px; color: #fff; text-align: center; font-size: 28px; font-family: 'Orbitron'; margin-bottom: 20px; }
+    .btn-scan { width: 100%; padding: 25px; background: var(--cielo); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 22px; margin-bottom: 20px; }
+    #fala-preview { min-height: 100px; font-size: 22px; color: #facc15; border: 1px dotted #444; border-radius: 10px; padding: 15px; background: #0a0a0a; margin-bottom: 20px; }
+    .mic-icon { width: 60px; height: 60px; background: var(--danger); border-radius: 50%; margin: 0 auto 20px; display: none; align-items: center; justify-content: center; animation: pulse 1s infinite; }
     @keyframes pulse { 0% { transform: scale(1); } 70% { transform: scale(1.1); } 100% { transform: scale(1); } }
   </style>
 </head>
 <body>
 
-  <div class="logo">CIELO HMT-1</div>
+  <div class="logo">POC CIELO V26</div>
 
   <button class="btn-scan" id="btnScan">ESCANEAR CÓDIGO</button>
 
-  <input id="serialInput" type="text" placeholder="SERIAL" readonly>
+  <input id="serialInput" type="text" placeholder="Aguardando Serial...">
 
   <div id="micIcon" class="mic-icon">🎤</div>
-  <div id="fala-preview">Diga "ESCANEAR CÓDIGO" para começar...</div>
-  <div id="timer"></div>
+  <div id="fala-preview">Diga "ESCANEAR CÓDIGO"</div>
 
 <script>
+// --- CONFIG FIREBASE (Sua configuração atual) ---
 const firebaseConfig = {
   apiKey: "AIzaSyDOCUw3ZQlLUglizIUP1Ive6PA9ee_-5nI",
   authDomain: "poc-realwear.firebaseapp.com",
@@ -74,25 +48,21 @@ const dicionario = {
 
 let recognition;
 let gravando = false;
+const serialInput = document.getElementById('serialInput');
 
-// --- FUNÇÃO PARA ABRIR O SCANNER DIRETO ---
-document.getElementById('btnScan').onclick = function() {
-    // Esse comando simula o clique que o HMT-1 daria ao entrar no menu
-    const input = document.getElementById('serialInput');
-    input.focus();
-    input.click(); 
-    
-    // Pequeno truque: avisar o sistema que queremos o scanner
-    // O HMT-1 abre o scanner automaticamente ao focar em inputs específicos
-    console.log("Abrindo scanner...");
-};
+// --- ACIONAMENTO DO SCANNER ---
+document.getElementById('btnScan').addEventListener('click', () => {
+    serialInput.focus();
+    // No HMT-1, dar o foco e o clique simulado dispara o WearHF Barcode
+    serialInput.click();
+});
 
-// --- DETECTAR O BIPE E LIGAR MIC ---
-// O segredo está no evento 'change' ou 'input'
-document.getElementById('serialInput').addEventListener('input', function() {
-    if(this.value.length > 2) {
-        // Aguarda 1 segundo após o bipe para o som do bipe não atrapalhar a IA
-        setTimeout(startMic, 1000); 
+// --- DETECTAR ENTRADA E ABRIR MIC ---
+serialInput.addEventListener('input', () => {
+    if(serialInput.value.length > 2) {
+        console.log("Serial detectado: " + serialInput.value);
+        // Pequeno delay para garantir que o scanner fechou
+        setTimeout(startMic, 800);
     }
 });
 
@@ -115,37 +85,33 @@ function startMic() {
         }
         document.getElementById('fala-preview').innerText = texto.toLowerCase();
 
-        if (texto.toLowerCase().includes("pronto") || texto.toLowerCase().includes("finalizar")) {
-            finalizarHMT();
+        if (texto.toLowerCase().includes("finalizar") || texto.toLowerCase().includes("pronto")) {
+            enviarDados();
         }
     };
     recognition.start();
 }
 
-function finalizarHMT() {
+function enviarDados() {
     if(!gravando) return;
     gravando = false;
     if(recognition) recognition.stop();
 
-    const texto = document.getElementById('fala-preview').innerText.toLowerCase();
+    const finalStr = document.getElementById('fala-preview').innerText.toLowerCase();
     const encontrados = [];
     Object.keys(dicionario).forEach(erro => {
-        if (dicionario[erro].some(p => texto.includes(p))) encontrados.push(erro);
+        if (dicionario[erro].some(p => finalStr.includes(p))) encontrados.push(erro);
     });
 
     db.ref("inspecao").push({
-        serial: document.getElementById('serialInput').value,
+        serial: serialInput.value,
         defeitos: encontrados,
-        transcricao: texto,
+        transcricao: finalStr,
         data: new Date().toLocaleString()
     });
 
-    document.getElementById('fala-preview').innerText = "✅ SALVO!";
-    let c = 3;
-    const t = setInterval(() => {
-        document.getElementById('timer').innerText = c--;
-        if(c < 0) { clearInterval(t); location.reload(); }
-    }, 1000);
+    document.getElementById('fala-preview').innerText = "✅ ENVIADO!";
+    setTimeout(() => { location.reload(); }, 2000);
 }
 </script>
 </body>
