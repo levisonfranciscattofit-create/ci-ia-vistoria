@@ -2,39 +2,52 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Cielo Vistoria | POC V19</title>
+  <title>Cielo Vistoria | V20 Câmera</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root { --cielo: #00aeef; --danger: #ff4b5c; --bg: #010a12; }
     body { background: radial-gradient(circle, #003d66 0%, var(--bg) 100%); color: white; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: 40px; width: 450px; padding: 40px; text-align: center; }
-    .logo { font-family: 'Orbitron'; color: var(--cielo); font-size: 22px; margin-bottom: 20px; letter-spacing: 2px; }
-    input { width: 100%; background: #000; border: 2px solid var(--cielo); border-radius: 15px; padding: 18px; color: #fff; text-align: center; font-size: 28px; font-family: 'Orbitron'; margin-bottom: 20px; outline: none; }
-    #fala-preview { min-height: 100px; font-size: 20px; color: #facc15; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.3); text-align: left; }
+    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: 40px; width: 90%; max-width: 450px; padding: 30px; text-align: center; }
+    .logo { font-family: 'Orbitron'; color: var(--cielo); font-size: 20px; margin-bottom: 20px; }
+    
+    .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+    input { flex: 1; background: #000; border: 2px solid var(--cielo); border-radius: 12px; padding: 15px; color: #fff; text-align: center; font-size: 20px; font-family: 'Orbitron'; outline: none; }
+    .btn-camera { background: var(--cielo); border: none; border-radius: 12px; width: 60px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    
+    #reader { width: 100%; border-radius: 15px; overflow: hidden; margin-bottom: 20px; display: none; border: 2px solid var(--cielo); }
+    
+    #fala-preview { min-height: 80px; font-size: 18px; color: #facc15; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.3); }
     .mic-icon { width: 50px; height: 50px; background: var(--danger); border-radius: 50%; margin: 0 auto 15px; display: none; animation: pulse 1s infinite; align-items: center; justify-content: center; }
-    .erro-box { background: rgba(255, 75, 92, 0.2); border-left: 5px solid var(--danger); padding: 12px; margin-top: 10px; text-align: left; font-size: 18px; font-weight: bold; border-radius: 8px; }
-    #timer { font-size: 60px; font-weight: 900; color: var(--cielo); margin-top: 10px; }
+    .erro-box { background: rgba(255, 75, 92, 0.2); border-left: 5px solid var(--danger); padding: 10px; margin-top: 8px; text-align: left; font-size: 16px; font-weight: bold; border-radius: 8px; }
+    
     @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 75, 92, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 75, 92, 0); } 100% { transform: scale(1); } }
   </style>
 </head>
 <body>
 
 <div class="glass">
-  <div class="logo">CIELO <span>VISTORIA POC</span></div>
-  <input id="serialInput" type="text" placeholder="BIPE O SERIAL" autofocus autocomplete="off">
+  <div class="logo">CIELO VISTORIA V20</div>
+  
+  <div class="input-group">
+    <input id="serialInput" type="text" placeholder="SERIAL" autocomplete="off">
+    <button class="btn-camera" onclick="abrirCamera()">📷</button>
+  </div>
+
+  <div id="reader"></div>
   
   <div id="micIcon" class="mic-icon">🎤</div>
-  <div id="fala-preview">...</div>
+  <div id="fala-preview">Aguardando serial...</div>
   <div id="listaErros"></div>
   
-  <button id="btnManual" style="width:100%; padding:18px; border-radius:15px; background:var(--cielo); color:white; font-weight:bold; display:none; border:none; cursor:pointer; font-size:18px;" onclick="forçarFinalizar()">CONCLUIR VISTORIA</button>
-  <div id="timer"></div>
+  <button id="btnManual" style="width:100%; padding:15px; border-radius:12px; background:var(--cielo); color:white; font-weight:bold; display:none; border:none; margin-top:10px;" onclick="forçarFinalizar()">FINALIZAR</button>
 </div>
 
 <script>
-// --- FIREBASE ---
+// --- CONFIG FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyDOCUw3ZQlLUglizIUP1Ive6PA9ee_-5nI",
   authDomain: "poc-realwear.firebaseapp.com",
@@ -44,32 +57,51 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// --- DICIONÁRIO ENXUTO (FOCO NA POC) ---
 const dicionario = {
     "TELA QUEBRADA": ["tela", "quebrad", "trinc", "visor"],
     "TECLADO RUIM": ["tecla", "botão", "teclad"],
     "FALTA DE RELEVO": ["relevo", "liso", "apagad"]
 };
 
+let html5QrCode;
 let recognition;
 let gravando = false;
-let silêncioTimer;
-let scannerTimer;
-let textoAcumulado = ""; // MEMÓRIA QUE NÃO APAGA
 
-document.getElementById('serialInput').addEventListener('input', function() {
-    clearTimeout(scannerTimer);
-    scannerTimer = setTimeout(() => { if(this.value.length > 2) startMic(); }, 250);
-});
+// --- FUNÇÃO CÂMERA ---
+function abrirCamera() {
+    const readerDiv = document.getElementById('reader');
+    readerDiv.style.display = 'block';
+    
+    html5QrCode = new Html5Qrcode("reader");
+    const config = { fps: 10, qrbox: { width: 250, height: 150 } };
 
+    html5QrCode.start(
+        { facingMode: "environment" }, 
+        config,
+        (decodedText) => {
+            document.getElementById('serialInput').value = decodedText;
+            pararCamera();
+            startMic(); // Já liga o microfone após ler o código!
+        }
+    ).catch(err => alert("Erro ao abrir câmera: " + err));
+}
+
+function pararCamera() {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            document.getElementById('reader').style.display = 'none';
+        });
+    }
+}
+
+// --- FUNÇÃO VOZ ---
 function startMic() {
     if(gravando) return;
     gravando = true;
-    textoAcumulado = ""; 
     
     document.getElementById('micIcon').style.display = "flex";
     document.getElementById('btnManual').style.display = "block";
-    document.getElementById('fala-preview').innerText = "Ouvindo...";
+    document.getElementById('fala-preview').innerText = "Diga os defeitos...";
 
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new Speech();
@@ -78,23 +110,11 @@ function startMic() {
     recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-        let rodadaTexto = "";
+        let textoFinal = "";
         for (let i = 0; i < event.results.length; i++) {
-            rodadaTexto += event.results[i][0].transcript + " ";
+            textoFinal += event.results[i][0].transcript + " ";
         }
-        
-        // O PULO DO GATO: Sempre somamos, nunca limpamos.
-        textoAcumulado = rodadaTexto.toLowerCase();
-        document.getElementById('fala-preview').innerText = textoAcumulado;
-
-        // Timer de 6s para pausas
-        clearTimeout(silêncioTimer);
-        silêncioTimer = setTimeout(() => { if(gravando) forçarFinalizar(); }, 6000);
-        
-        // Se falar "Pronto" ou "Finalizar"
-        if(textoAcumulado.includes("pronto") || textoAcumulado.includes("finalizar") || textoAcumulado.includes("ok")) {
-            forçarFinalizar();
-        }
+        document.getElementById('fala-preview').innerText = textoFinal.toLowerCase();
     };
 
     recognition.start();
@@ -103,43 +123,23 @@ function startMic() {
 function forçarFinalizar() {
     if(!gravando) return;
     gravando = false;
-    
-    const textoParaAnalise = document.getElementById('fala-preview').innerText.toLowerCase();
+    const texto = document.getElementById('fala-preview').innerText.toLowerCase();
     if(recognition) recognition.stop();
-    clearTimeout(silêncioTimer);
 
-    document.getElementById('micIcon').style.display = "none";
-    document.getElementById('btnManual').style.display = "none";
-    
     const encontrados = [];
     Object.keys(dicionario).forEach(erro => {
-        if (dicionario[erro].some(p => textoParaAnalise.includes(p))) {
-            encontrados.push(erro);
-        }
+        if (dicionario[erro].some(p => texto.includes(p))) encontrados.push(erro);
     });
 
-    const list = document.getElementById('listaErros');
-    if(encontrados.length === 0) {
-        list.innerHTML = "<h3 style='color:var(--cielo)'>✓ EQUIPAMENTO OK</h3>";
-    } else {
-        encontrados.forEach(e => { 
-            list.innerHTML += `<div class="erro-box">❌ ${e}</div>`; 
-        });
-    }
-
-    // SALVAR
     db.ref("inspecao").push({
-        serial: document.getElementById('serialInput').value.toUpperCase(),
+        serial: document.getElementById('serialInput').value,
         defeitos: encontrados,
-        transcricao: textoParaAnalise,
+        transcricao: texto,
         data: new Date().toLocaleString()
     });
 
-    let c = 5;
-    const t = setInterval(() => {
-        document.getElementById('timer').innerText = c--;
-        if(c < 0) { clearInterval(t); location.reload(); }
-    }, 1000);
+    alert("Vistoria salva com sucesso!");
+    location.reload();
 }
 </script>
 </body>
